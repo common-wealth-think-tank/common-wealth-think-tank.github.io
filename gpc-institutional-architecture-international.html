@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <title>GPC Institutional Architecture — International Level</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace
+    }
+
+    #chart {
+      width: 100%;
+      height: 600px;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: #fff;
+      border: 1px solid #333;
+      padding: 8px;
+      font-size: 10px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      max-width: 200px;
+      line-height: 1.4;
+    }
+
+    .tooltip strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .tt-row,
+    .tt-name {
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chart"></div>
+  <div class="tooltip" id="tooltip"></div>
+  <script>
+
+    // Data
+
+    const nodes = [
+      { id: "1", name: "UK Export Finance", abbr: "UKEF", type: "institution", institutionType: "Export credit agency", cluster: "Trade policy", department: "DBT", legal: "Ministerial department", },
+      { id: "2", name: "Export Guarantees Advisory Council", abbr: "EGAC", type: "institution", institutionType: "Advisory body", cluster: "Trade policy", department: "DBT", legal: "Expert committee" },
+      { id: "3", name: "Trade Remedies Authority", abbr: "TRA", type: "institution", institutionType: "Regulatory body", cluster: "Trade policy", department: "DBT", legal: "Executive non-departmental public body" },
+      { id: "4", name: "British International Investment", abbr: "BII", type: "institution", institutionType: "Publicly owned financial company", cluster: "Development finance", department: "FCDO", legal: "Company" },
+      { id: "5", name: "GCHQ", abbr: "GCHQ", type: "institution", institutionType: "Intelligence service", cluster: "Foreign intelligence", department: "FCDO", legal: "Unspecified" },
+      { id: "6", name: "MI6", abbr: "MI6", type: "institution", institutionType: "Intelligence service", cluster: "Foreign intelligence", department: "FCDO", legal: "Unspecified" },
+      { id: "7", name: "Crossrail International", abbr: "CI", type: "institution", institutionType: "Advisory body", cluster: "Technical cooperation", department: "DfT", legal: "Public corporation" },
+      { id: "8", name: "Department for Business and Trade", abbr: "DBT", type: "department", institutionType: null, cluster: null, department: null },
+      { id: "9", name: "Foreign, Commonwealth & Development Office", abbr: "FCDO", type: "department", institutionType: null, cluster: null, department: null },
+      { id: "10", name: "Department for Transport", abbr: "DfT", type: "department", institutionType: null, cluster: null, department: null },
+    ];
+
+    const edges = [
+      { source: "1", target: "8", function: "Financing" },
+      { source: "2", target: "8", function: "Advisory" },
+      { source: "3", target: "8", function: "Regulatory" },
+      { source: "4", target: "9", function: "Financing" },
+      { source: "5", target: "9", function: "Executive" },
+      { source: "6", target: "9", function: "Executive" },
+      { source: "7", target: "10", function: "Advisory" },
+    ];
+
+    // Visual mapping
+
+    const margin = 16;
+
+    const institutionTypes = [
+      { label: "Export credit agency", color: "#777" },
+      { label: "Advisory body", color: "#00C0A3" },
+      { label: "Regulatory body", color: "#453643" },
+      { label: "Publicly owned financial company", color: "#6F7D34" },
+      { label: "Intelligence service", color: "#F19953" },
+    ];
+
+    const institutionTypeColour = Object.fromEntries(institutionTypes.map(d => [d.label, d.color]));
+
+    const edgeTypes = [
+      { label: "Financing", dasharray: null },
+      { label: "Advisory", dasharray: "5,3" },
+      { label: "Regulatory", dasharray: "8,3,2,3" },
+      { label: "Executive", dasharray: "1.5,3" },
+    ];
+
+    const charWidth = 6.5;
+    const panelWidth = d3.max([
+      "Government department", "Institution",
+      ...institutionTypes.map(d => d.label),
+      ...edgeTypes.map(d => d.label)
+    ], d => d.length) * charWidth + 36;
+
+    const edgeStyle = ({
+      "Financing": { stroke: "#333", dasharray: null, width: 1.5 },
+      "Advisory": { stroke: "#333", dasharray: "5,3", width: 1.5 },
+      "Regulatory": { stroke: "#333", dasharray: "8,3,2,3", width: 1.5 },
+      "Executive": { stroke: "#333", dasharray: "1.5,3", width: 1.5 },
+    })
+
+    const clusterCentroid = ({
+      "Trade policy": { x: -180, y: -80 },
+      "Development finance": { x: 80, y: -160 },
+      "Foreign intelligence": { x: 180, y: 60 },
+      "Technical cooperation": { x: -60, y: 180 },
+    });
+
+    const clusterStyle = ({
+      "Trade policy": { fill: "#F1EBE4" },
+      "Development finance": { fill: "#F1EBE4" },
+      "Foreign intelligence": { fill: "#F1EBE4" },
+      "Technical cooperation": { fill: "#F1EBE4" },
+    });
+
+    function nodeRadius(d) {
+      return d.type === "department" ? 28 : 14;
+    };
+
+    function nodeColour(d) {
+      if (d.type === "department") return "#333";
+      return institutionTypeColour[d.institutionType] || "#7a8399";
+    };
+
+    const expandHull = (points, padding) => {
+      const hull = d3.polygonHull(points);
+      if (!hull) return null;
+      const cx = d3.mean(hull, p => p[0]);
+      const cy = d3.mean(hull, p => p[1]);
+      const expanded = hull.map(p => {
+        const dx = p[0] - cx, dy = p[1] - cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        return [p[0] + dx / len * padding, p[1] + dy / len * padding];
+      });
+      return "M" + expanded.map(p => p.join(",")).join("L") + "Z";
+    };
+
+    function hullPath(points, padding) {
+      if (points.length === 0) return null;
+      if (points.length === 1) {
+        const [x, y] = points[0];
+        const r = padding * 0.5;
+        const synthetic = [0, 1, 2, 3].map(i => {
+          const angle = (i / 4) * 2 * Math.PI;
+          return [x + r * Math.cos(angle), y + r * Math.sin(angle)];
+        });
+        return expandHull(synthetic, padding);
+      }
+      if (points.length === 2) {
+        const dx = points[1][0] - points[0][0];
+        const dy = points[1][1] - points[0][1];
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const ux = -dy / len * padding, uy = dx / len * padding;
+        return `M${points[0][0] + ux},${points[0][1] + uy}
+            L${points[1][0] + ux},${points[1][1] + uy}
+            L${points[1][0] - ux},${points[1][1] - uy}
+            L${points[0][0] - ux},${points[0][1] - uy}Z`;
+      }
+      const hull = d3.polygonHull(points);
+      if (!hull) return null;
+      const cx = d3.mean(hull, p => p[0]);
+      const cy = d3.mean(hull, p => p[1]);
+      const expanded = hull.map(p => {
+        const dx = p[0] - cx, dy = p[1] - cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        return [p[0] + dx / len * padding, p[1] + dy / len * padding];
+      });
+      return "M" + expanded.map(p => p.join(",")).join("L") + "Z";
+    }
+
+    // Chart
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%");
+    const tooltip = document.getElementById("tooltip");
+
+    let width, height;
+
+    function getDims() {
+      const rect = svg.node().getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+    }
+
+    getDims();
+
+    const g = svg.append("g").attr("class", "zoom-container");
+    g.attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.3, 4])
+      .on("zoom", e => g.attr("transform", e.transform));
+
+    svg.call(zoom);
+    zoom.translateTo(svg, 0, 0);
+
+    // Layers (order matters for z-depth)
+    const clusterLayer = g.append("g").attr("class", "clusters");
+    const edgeLayer = g.append("g").attr("class", "edges");
+    const nodeLayer = g.append("g").attr("class", "nodes");
+    const nameLayer = g.append("g").attr("class", "names");
+
+    // Force simulation
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(edges)
+        .id(d => d.id)
+        .distance(d => {
+          // Departments attract institutions closer
+          const src = nodeMap.get(d.source.id || d.source);
+          const tgt = nodeMap.get(d.target.id || d.target);
+          if (src?.type === "department" || tgt?.type === "department") return 110;
+          return 80;
+        })
+        .strength(0.6)
+      )
+      .force("charge", d3.forceManyBody().strength(d => d.type === "department" ? -400 : -180))
+      .force("collision", d3.forceCollide().radius(d => nodeRadius(d) + 14))
+      .force("clusterX", d3.forceX(d => {
+        if (d.cluster && clusterCentroid[d.cluster]) return clusterCentroid[d.cluster].x;
+        return 0;
+      }).strength(0.18))
+      .force("clusterY", d3.forceY(d => {
+        if (d.cluster && clusterCentroid[d.cluster]) return clusterCentroid[d.cluster].y;
+        return 0;
+      }).strength(0.18))
+      .force("centerX", d3.forceX(0).strength(0.03))
+      .force("centerY", d3.forceY(0).strength(0.03));
+
+    // Draw edges 
+    const edgeSel = edgeLayer.selectAll("line")
+      .data(edges)
+      .join("line")
+      .attr("stroke", d => edgeStyle[d.function]?.stroke || "#333")
+      .attr("stroke-width", d => edgeStyle[d.function]?.width || 1.5)
+      .attr("stroke-dasharray", d => edgeStyle[d.function]?.dasharray || null)
+      .attr("opacity", 1);
+
+    // Draw nodes
+    const nodeSel = nodeLayer.selectAll("g.node")
+      .data(nodes)
+      .join("g")
+      .attr("class", "node")
+      .style("cursor", "pointer")
+      .call(d3.drag()
+        .on("start", (event, d) => {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x; d.fy = d.y;
+        })
+        .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+        .on("end", (event, d) => {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null; d.fy = null;
+        })
+      )
+
+      .on("mouseover", (event, d) => {
+        tooltip.style.opacity = "1";
+        const lines = d.type === "department"
+          ? `<strong>${d.name}</strong><div class="tt-row"><span class="tt-name">Type: </span> Government department</div>`
+          : `<strong>${d.name}</strong>
+         <div class="tt-row"><span class="tt-name">Type:</span> ${d.institutionType}</div>
+          <div class="tt-row"><span class="tt-name">Legal status:</span> ${d.legal}</div>`;
+        tooltip.innerHTML = lines;
+      })
+      .on("mousemove", event => {
+        tooltip.style.left = (event.pageX + 14) + "px";
+        tooltip.style.top = (event.pageY - 10) + "px";
+      })
+      .on("mouseout", () => { tooltip.style.opacity = "0"; });
+
+    // Department nodes → diamond shape
+    nodeSel.filter(d => d.type === "department")
+      .append("rect")
+      .attr("width", d => nodeRadius(d) * 1.8)
+      .attr("height", d => nodeRadius(d) * 1.8)
+      .attr("x", d => -nodeRadius(d) * 0.9)
+      .attr("y", d => -nodeRadius(d) * 0.9)
+      .attr("transform", "rotate(45)")
+      .attr("fill", d => nodeColour(d))
+      .attr("fill-opacity", 1)
+
+    // Institution nodes → circle
+    nodeSel.filter(d => d.type === "institution")
+      .append("circle")
+      .attr("r", d => nodeRadius(d))
+      .attr("fill", d => nodeColour(d))
+      .attr("fill-opacity", 1)
+
+    // Names 
+    const nameSel = nameLayer.selectAll("text")
+      .data(nodes)
+      .join("text")
+      .text(d => d.abbr || d.name)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("fill", "#fff")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("font-size", d => d.type === "department" ? "10px" : "8px")
+      .attr("font-weight", d => d.type === "department" ? "500" : "400")
+      .attr("pointer-events", "none");
+
+    // Clusters
+    const clusters = [...new Set(nodes.filter(n => n.cluster).map(n => n.cluster))];
+
+    const hullSel = clusterLayer.selectAll("path.cluster-hull")
+      .data(clusters)
+      .join("path")
+      .attr("class", "cluster-hull")
+      .attr("fill", d => clusterStyle[d]?.fill || "rgba(255,255,255,0.04)")
+      .attr("stroke-width", 1.5)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-dasharray", "4,3");
+
+    // Cluster name
+    const clusternameSel = clusterLayer.selectAll("text.cluster-name")
+      .data(clusters)
+      .join("text")
+      .attr("class", "cluster-name")
+      .text(d => d)
+      .attr("fill", d => clusterStyle[d]?.stroke || "#333")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("font-size", "8px")
+      .attr("font-weight", "300")
+      .attr("letter-spacing", "0.06em")
+      .attr("pointer-events", "none")
+      .attr("opacity", 1);
+
+    // Tick
+    simulation.on("tick", () => {
+      edgeSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+      nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+
+      nameSel.attr("x", d => d.x).attr("y", d => d.y);
+
+      hullSel.attr("d", clusterName => {
+        const pts = nodes
+          .filter(n => n.cluster === clusterName)
+          .map(n => [n.x, n.y]);
+        return hullPath(pts, 36) || "";
+      });
+
+      clusternameSel.each(function (clusterName) {
+        const pts = nodes.filter(n => n.cluster === clusterName).map(n => [n.x, n.y]);
+        if (!pts.length) return;
+        const minX = d3.min(pts, p => p[0]);
+        const minY = d3.min(pts, p => p[1]);
+        d3.select(this).attr("x", minX).attr("y", minY - 42);
+      });
+    });
+
+
+    // Legend
+    function drawLegend() {
+      const margin = 16;
+      const lineHeight = 18;
+      const swatchSize = 8;
+      const sectionGap = 10;
+      const sectionTitleHeight = 20;
+      const sections = [
+        { title: "Node type", rows: 2 },
+        { title: "Institution type", rows: institutionTypes.length },
+        { title: "Edge function", rows: edgeTypes.length },
+      ];
+      const panelHeight = margin * 2
+        + sections.reduce((sum, s) => sum + sectionTitleHeight + s.rows * lineHeight + sectionGap, 0);
+
+      const lg = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${width - panelWidth - margin}, ${margin})`);
+      let y = margin;
+      const labelX = swatchSize * 2 + 10;
+
+      function sectionTitle(text) {
+        lg.append("text")
+          .attr("x", margin * 0.75)
+          .attr("y", y + 10)
+          .attr("fill", "#777")
+          .attr("font-family", "'JetBrains Mono', monospace")
+          .attr("font-size", "8px")
+          .attr("font-weight", "500")
+          .attr("letter-spacing", "0.1em")
+          .text(text.toUpperCase());
+        y += sectionTitleHeight;
+      }
+
+      function rowLabel(text) {
+        lg.append("text")
+          .attr("x", labelX + margin * 0.75)
+          .attr("y", y + swatchSize * 0.5)
+          .attr("dominant-baseline", "middle")
+          .attr("fill", "#333")
+          .attr("font-family", "'JetBrains Mono', monospace")
+          .attr("font-size", "10px")
+          .text(text);
+      }
+
+      // Node type
+      sectionTitle("Node type");
+      const ds = swatchSize;
+      lg.append("rect")
+        .attr("x", margin * 0.75 + ds * 0.5)
+        .attr("y", y)
+        .attr("width", ds)
+        .attr("height", ds)
+        .attr("transform", `rotate(45, ${margin * 0.75 + ds}, ${y + ds * 0.5})`)
+        .attr("fill", "#333");
+      rowLabel("Government department");
+      y += lineHeight;
+
+      lg.append("circle")
+        .attr("cx", margin * 0.75 + ds)
+        .attr("cy", y + swatchSize * 0.5)
+        .attr("r", swatchSize * 0.6)
+        .attr("fill", "#333");
+      rowLabel("Institution");
+      y += lineHeight + sectionGap;
+
+      // Institution type
+      sectionTitle("Institution type");
+      institutionTypes.forEach(d => {
+        lg.append("circle")
+          .attr("cx", margin * 0.75 + ds)
+          .attr("cy", y + swatchSize * 0.5)
+          .attr("r", swatchSize * 0.6)
+          .attr("fill", d.color);
+        rowLabel(d.label);
+        y += lineHeight;
+      });
+      y += sectionGap;
+
+      // Edge function
+      sectionTitle("Function");
+      const lineLen = 20;
+      edgeTypes.forEach(d => {
+        lg.append("line")
+          .attr("x1", margin * 0.75)
+          .attr("y1", y + swatchSize * 0.5)
+          .attr("x2", margin * 0.75 + lineLen)
+          .attr("y2", y + swatchSize * 0.5)
+          .attr("stroke", "#333")
+          .attr("stroke-width", 1.5)
+          .attr("stroke-dasharray", d.dasharray || null);
+        rowLabel(d.label);
+        y += lineHeight;
+      });
+    }
+
+    drawLegend();
+
+    new ResizeObserver(() => {
+      getDims();
+      svg.select("g.legend").attr("transform", `translate(${width - panelWidth - margin}, ${margin})`);
+    }).observe(document.getElementById("chart"));
+
+  </script>
+
+</body>
+
+</html>
