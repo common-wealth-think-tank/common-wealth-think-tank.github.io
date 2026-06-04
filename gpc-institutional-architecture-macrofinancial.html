@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <title>GPC Institutional Architecture — Macrofinancial Level</title>
+  <title>GPC Institutional Architecture — International Level</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
@@ -17,7 +17,6 @@
     html,
     body {
       overflow: hidden;
-      pointer-events: none;
     }
 
     #container {
@@ -94,30 +93,40 @@
   </div>
   <div class="tooltip" id="tooltip"></div>
   <script>
+
+    // Data
+
     const nodes = [
-      { id: "1", name: "Bank of England", abbr: "BoE", type: "institution", institutionType: "Central bank", cluster: "Monetary policy", department: "HMT", legal: "Company", },
-      { id: "2", name: "Prudential Regulation Authority", abbr: "PRA", type: "institution", institutionType: "Regulatory body", cluster: "Financial regulation", department: "HMT", legal: "Unit of a company (BoE)", },
-      { id: "3", name: "Financial Conduct Authority", abbr: "FCA", type: "institution", institutionType: "Regulatory body", cluster: "Financial regulation", department: "HMT", legal: "Company", },
-      { id: "4", name: "Office for Budget Responsibility", abbr: "OBR", type: "institution", institutionType: "Advisory body", cluster: "Fiscal policy", department: "HMT", legal: "Executive non-departmental public body", },
-      { id: "5", name: "UK Debt Management Office", abbr: "DMO", type: "institution", institutionType: "Executive body", cluster: "Fiscal policy", department: "HMT", legal: "Executive agency", },
-      { id: "6", name: "HM Treasury", abbr: "HMT", type: "department", institutionType: null, cluster: null, department: null, legal: null, },
+      { id: "1", name: "UK Export Finance", abbr: "UKEF", type: "institution", institutionType: "Export credit agency", cluster: "Trade policy", department: "DBT", legal: "Ministerial department", },
+      { id: "2", name: "Export Guarantees Advisory Council", abbr: "EGAC", type: "institution", institutionType: "Advisory body", cluster: "Trade policy", department: "DBT", legal: "Expert committee" },
+      { id: "3", name: "Trade Remedies Authority", abbr: "TRA", type: "institution", institutionType: "Regulatory body", cluster: "Trade policy", department: "DBT", legal: "Executive non-departmental public body" },
+      { id: "4", name: "British International Investment", abbr: "BII", type: "institution", institutionType: "Publicly owned financial company", cluster: "Development finance", department: "FCDO", legal: "Company" },
+      { id: "5", name: "GCHQ", abbr: "GCHQ", type: "institution", institutionType: "Intelligence service", cluster: "Foreign intelligence", department: "FCDO", legal: "Unspecified" },
+      { id: "6", name: "MI6", abbr: "MI6", type: "institution", institutionType: "Intelligence service", cluster: "Foreign intelligence", department: "FCDO", legal: "Unspecified" },
+      { id: "7", name: "Crossrail International", abbr: "CI", type: "institution", institutionType: "Advisory body", cluster: "Technical cooperation", department: "DfT", legal: "Public corporation" },
+      { id: "8", name: "Department for Business and Trade", abbr: "DBT", type: "department", institutionType: null, cluster: null, department: null },
+      { id: "9", name: "Foreign, Commonwealth & Development Office", abbr: "FCDO", type: "department", institutionType: null, cluster: null, department: null },
+      { id: "10", name: "Department for Transport", abbr: "DfT", type: "department", institutionType: null, cluster: null, department: null },
     ];
 
     const edges = [
-      { source: "1", target: "6", function: "Financing" },
-      { source: "2", target: "6", function: "Regulatory" },
-      { source: "3", target: "6", function: "Regulatory" },
-      { source: "4", target: "6", function: "Advisory" },
-      { source: "5", target: "6", function: "Executive" },
+      { source: "1", target: "8", function: "Financing" },
+      { source: "2", target: "8", function: "Advisory" },
+      { source: "3", target: "8", function: "Regulatory" },
+      { source: "4", target: "9", function: "Financing" },
+      { source: "5", target: "9", function: "Executive" },
+      { source: "6", target: "9", function: "Executive" },
+      { source: "7", target: "10", function: "Advisory" },
     ];
 
     // Visual mapping
 
     const institutionTypes = [
+      { label: "Export credit agency", color: "#777" },
       { label: "Advisory body", color: "#00C0A3" },
       { label: "Regulatory body", color: "#453643" },
-      { label: "Central bank", color: "#FD676A" },
-      { label: "Executive body", color: "#FFA69E" },
+      { label: "Publicly owned financial company", color: "#6F7D34" },
+      { label: "Intelligence service", color: "#F19953" },
     ];
 
     const institutionTypeColour = Object.fromEntries(institutionTypes.map(d => [d.label, d.color]));
@@ -132,17 +141,18 @@
     const edgeTypes = Object.entries(edgeStyle).map(([label, s]) => ({ label, dasharray: s.dasharray }));
 
     const clusterCentroid = ({
-      "Monetary policy": { x: -180, y: -80 },
-      "Financial regulation": { x: 80, y: -160 },
-      "Fiscal policy": { x: 180, y: 60 },
+      "Trade policy": { x: -180, y: -80 },
+      "Development finance": { x: 80, y: -160 },
+      "Foreign intelligence": { x: 180, y: 60 },
+      "Technical cooperation": { x: -60, y: 180 },
     });
 
     const clusterStyle = ({
-      "Monetary policy": { fill: "#F1EBE4" },
-      "Financial regulation": { fill: "#F1EBE4" },
-      "Fiscal policy": { fill: "#F1EBE4" },
+      "Trade policy": { fill: "#F1EBE4" },
+      "Development finance": { fill: "#F1EBE4" },
+      "Foreign intelligence": { fill: "#F1EBE4" },
+      "Technical cooperation": { fill: "#F1EBE4" },
     });
-
 
     function nodeRadius(d) {
       return d.type === "department" ? 28 : 14;
@@ -224,7 +234,7 @@
       const w = window.innerWidth;
       const mob = w <= 767;
       g.attr("transform", mob
-        ? `translate(300, 180)`    
+        ? `translate(300, 180)`     // fixed coords within viewBox space
         : `translate(210, 300)`
       );
     }
@@ -280,34 +290,44 @@
       .join("g")
       .attr("class", "node")
       .style("cursor", "pointer")
-      .call(d3.drag()
-        .on("start", (event, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x; d.fy = d.y;
-        })
-        .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
-        .on("end", (event, d) => {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = null; d.fy = null;
-        })
-      )
 
-      .on("mouseover", (event, d) => {
-        tooltip.style.opacity = "1";
-        const lines = d.type === "department"
-          ? `<strong>${d.name}</strong><div class="tt-row"><span class="tt-name">Type: </span> Government department</div>`
-          : `<strong>${d.name}</strong>
-         <div class="tt-row"><span class="tt-name">Type:</span> ${d.institutionType}</div>
-          <div class="tt-row"><span class="tt-name">Legal status:</span> ${d.legal}</div>`;
+
+    document.addEventListener('mousemove', (e) => {
+
+      const svgEl = svg.node();
+      const pt = svgEl.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const svgP = pt.matrixTransform(svgEl.getScreenCTM().inverse());
+
+      const gTransform = g.node().getCTM();
+      const localX = (svgP.x - gTransform.e) / gTransform.a;
+      const localY = (svgP.y - gTransform.f) / gTransform.d;
+
+      let hit = null;
+      for (const d of nodes) {
+        const dx = d.x - localX;
+        const dy = d.y - localY;
+        const r = nodeRadius(d) + 6; // slight hit padding
+        if (dx * dx + dy * dy < r * r) { hit = d; break; }
+      }
+
+      if (hit) {
+        const lines = hit.type === "department"
+          ? `<strong>${hit.name}</strong><div class="tt-row">Type: Government department</div>`
+          : `<strong>${hit.name}</strong>
+         <div class="tt-row"><span class="tt-name">Type:</span> ${hit.institutionType}</div>
+         <div class="tt-row"><span class="tt-name">Legal status:</span> ${hit.legal}</div>`;
         tooltip.innerHTML = lines;
-      })
-      .on("mousemove", event => {
-        tooltip.style.left = (event.pageX + 14) + "px";
-        tooltip.style.top = (event.pageY - 10) + "px";
-      })
-      .on("mouseout", () => { tooltip.style.opacity = "0"; });
+        tooltip.style.opacity = "1";
+        tooltip.style.left = (e.clientX + 14) + "px";
+        tooltip.style.top = (e.clientY - 10) + "px";
+      } else {
+        tooltip.style.opacity = "0";
+      }
+    });
 
-    // Department nodes → diamond shape
+    // Department nodes 
     nodeSel.filter(d => d.type === "department")
       .append("rect")
       .attr("width", d => nodeRadius(d) * 1.8)
@@ -318,7 +338,7 @@
       .attr("fill", d => nodeColour(d))
       .attr("fill-opacity", 1)
 
-    // Institution nodes → circle
+    // Institution nodes 
     nodeSel.filter(d => d.type === "institution")
       .append("circle")
       .attr("r", d => nodeRadius(d))
@@ -439,9 +459,8 @@
     drawLegend();
 
     window.addEventListener('wheel', (e) => {
-      e.preventDefault();
       window.parent.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
-    }, { passive: false });
+    }, { passive: true });
 
     let touchStartY = 0;
     window.addEventListener('touchstart', (e) => {
@@ -450,10 +469,10 @@
 
     window.addEventListener('touchmove', (e) => {
       const dy = touchStartY - e.touches[0].clientY;
-      e.preventDefault();
       window.parent.scrollBy({ top: dy, behavior: 'auto' });
       touchStartY = e.touches[0].clientY;
-    }, { passive: false });
+    }, { passive: true });
+
   </script>
 
 </body>
