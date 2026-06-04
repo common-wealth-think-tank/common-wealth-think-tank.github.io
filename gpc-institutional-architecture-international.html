@@ -68,9 +68,12 @@
     @media screen and (max-width: 767px) {
       #container {
         flex-direction: column;
+        height: 800px;
       }
 
-      
+      #chart {
+        width: 100vw;
+      }
     }
   </style>
 </head>
@@ -223,7 +226,11 @@
     getDims();
 
     const g = svg.append("g");
-    g.attr("transform", `translate(${width * 0.25}, ${height / 2})`);
+    const mob = window.innerWidth <= 767;
+    g.attr("transform", mob
+      ? `translate(${width / 2}, ${height * 0.3})`
+      : `translate(${width * 0.25}, ${height / 2})`
+    );
 
     // Layers (order matters for z-depth)
     const clusterLayer = g.append("g").attr("class", "clusters");
