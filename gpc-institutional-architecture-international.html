@@ -10,9 +10,8 @@
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
     body {
-      margin: 40px;
+      margin: 0;
       font-family: 'JetBrains Mono', monospace;
-      overflow: hidden;
     }
 
     html,
@@ -102,8 +101,6 @@
 
     // Visual mapping
 
-    const margin = 16;
-
     const institutionTypes = [
       { label: "Export credit agency", color: "#777" },
       { label: "Advisory body", color: "#00C0A3" },
@@ -121,12 +118,6 @@
       { label: "Executive", dasharray: "1.5,3" },
     ];
 
-    const charWidth = 6.5;
-    const panelWidth = d3.max([
-      "Government department", "Institution",
-      ...institutionTypes.map(d => d.label),
-      ...edgeTypes.map(d => d.label)
-    ], d => d.length) * charWidth + 36;
 
     const edgeStyle = ({
       "Financing": { stroke: "#333", dasharray: null, width: 1.5 },
@@ -224,12 +215,6 @@
 
     const g = svg.append("g");
     g.attr("transform", `translate(${width * 0.25}, ${height / 2})`);
-
-    const zoom = d3.zoom()
-      .on("zoom", e => g.attr("transform", e.transform));
-
-    svg.call(zoom);
-    svg.on("wheel.zoom", null);
 
     // Layers (order matters for z-depth)
     const clusterLayer = g.append("g").attr("class", "clusters");
