@@ -469,10 +469,9 @@
 
     window.addEventListener('touchmove', (e) => {
       const dy = touchStartY - e.touches[0].clientY;
-      e.preventDefault();
       window.parent.scrollBy({ top: dy, behavior: 'auto' });
       touchStartY = e.touches[0].clientY;
-    }, { passive: false });
+    }, { passive: true });
 
   </script>
 
