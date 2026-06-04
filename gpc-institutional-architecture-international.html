@@ -197,8 +197,13 @@
 
     getDims();
 
-    const g = svg.append("g").attr("class", "zoom-container");
+    const g = svg.append("g");
     g.attr("transform", `translate(${width * 0.25}, ${height / 2})`);
+
+    svg.call(d3.zoom()
+      .scaleExtent([0.3, 4])
+      .on("zoom", e => g.attr("transform", e.transform))
+    );
 
     // Layers (order matters for z-depth)
     const clusterLayer = g.append("g").attr("class", "clusters");
