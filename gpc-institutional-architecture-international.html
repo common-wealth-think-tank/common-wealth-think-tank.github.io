@@ -123,20 +123,14 @@
 
     const institutionTypeColour = Object.fromEntries(institutionTypes.map(d => [d.label, d.color]));
 
-    const edgeTypes = [
-      { label: "Financing", dasharray: null },
-      { label: "Advisory", dasharray: "5,3" },
-      { label: "Regulatory", dasharray: "8,3,2,3" },
-      { label: "Executive", dasharray: "1.5,3" },
-    ];
-
-
     const edgeStyle = ({
       "Financing": { stroke: "#333", dasharray: null, width: 1.5 },
       "Advisory": { stroke: "#333", dasharray: "5,3", width: 1.5 },
       "Regulatory": { stroke: "#333", dasharray: "8,3,2,3", width: 1.5 },
       "Executive": { stroke: "#333", dasharray: "1.5,3", width: 1.5 },
-    })
+    });
+
+    const edgeTypes = Object.entries(edgeStyle).map(([label, s]) => ({ label, dasharray: s.dasharray }));
 
     const clusterCentroid = ({
       "Trade policy": { x: -180, y: -80 },
@@ -229,7 +223,7 @@
     const mob = window.innerWidth <= 767;
     g.attr("transform", mob
       ? `translate(${width / 2}, ${height * 0.3})`
-      : `translate(${width * 0.25}, ${height / 2})`
+      : `translate(${width * 0.35}, ${height / 2})`
     );
 
     // Layers (order matters for z-depth)
