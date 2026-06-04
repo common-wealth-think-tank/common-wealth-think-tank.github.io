@@ -24,13 +24,12 @@
       display: flex;
       align-items: center;
       height: 600px;
-      pointer-events: none;
+      width: 100%;
     }
 
     #chart {
       flex: 0 0 auto;
       height: 100%;
-      pointer-events: all;
     }
 
     #legend {
@@ -39,7 +38,6 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 10px;
       line-height: 1.6;
-      pointer-events: all;
     }
 
     .tooltip {
@@ -68,7 +66,7 @@
     @media screen and (max-width: 700px) {
       #container {
         flex-direction: column;
-        height: 800px;
+        height: 900px;
         align-items: flex-start;
       }
 
@@ -79,6 +77,11 @@
 
       #chart svg {
         width: 100%;
+      }
+
+      #legend {
+        width: 100%;
+        box-sizing: border-box;
       }
     }
   </style>
@@ -200,8 +203,10 @@
 
     const svg = d3.select("#chart")
       .append("svg")
-      .attr("width", 600)
-      .attr("height", "100%");
+      .attr("viewBox", "0 0 600 600")
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("width", "100%")
+      .style("height", "100%");
     const tooltip = document.getElementById("tooltip");
 
     let width, height;
@@ -215,11 +220,16 @@
     getDims();
 
     const g = svg.append("g");
-    const mob = window.innerWidth <= 767;
-    g.attr("transform", mob
-      ? `translate(${width / 2}, ${height * 0.3})`
-      : `translate(${width * 0.35}, ${height / 2})`
-    );
+    function recenter() {
+      const w = window.innerWidth;
+      const mob = w <= 767;
+      g.attr("transform", mob
+        ? `translate(300, 180)`    
+        : `translate(210, 300)`
+      );
+    }
+    recenter();
+    window.addEventListener('resize', recenter);
 
     // Layers (order matters for z-depth)
     const clusterLayer = g.append("g").attr("class", "clusters");
@@ -427,6 +437,23 @@
     }
 
     drawLegend();
+
+    window.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      window.parent.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
+    }, { passive: false });
+
+    let touchStartY = 0;
+    window.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      const dy = touchStartY - e.touches[0].clientY;
+      e.preventDefault();
+      window.parent.scrollBy({ top: dy, behavior: 'auto' });
+      touchStartY = e.touches[0].clientY;
+    }, { passive: false });
   </script>
 
 </body>
