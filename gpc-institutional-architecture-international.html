@@ -33,6 +33,7 @@
     }
 
     #legend {
+      margin-top: 5%;
       flex: 0 0 auto;
       padding: 16px;
       font-family: 'JetBrains Mono', monospace;
@@ -62,6 +63,14 @@
     .tt-row,
     .tt-name {
       margin-bottom: 2px;
+    }
+
+    @media screen and (max-width: 767px) {
+      #container {
+        flex-direction: column;
+      }
+
+      
     }
   </style>
 </head>
@@ -422,11 +431,6 @@
     }
 
     drawLegend();
-
-    new ResizeObserver(() => {
-      getDims();
-      svg.select("g.legend").attr("transform", `translate(${width - panelWidth - margin}, ${margin})`);
-    }).observe(document.getElementById("chart"));
 
   </script>
 
