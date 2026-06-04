@@ -17,7 +17,6 @@
     html,
     body {
       overflow: hidden;
-      pointer-events: none;
     }
 
     #container {
@@ -291,34 +290,44 @@
       .join("g")
       .attr("class", "node")
       .style("cursor", "pointer")
-      .call(d3.drag()
-        .on("start", (event, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x; d.fy = d.y;
-        })
-        .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
-        .on("end", (event, d) => {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = null; d.fy = null;
-        })
-      )
 
-      .on("mouseover", (event, d) => {
-        tooltip.style.opacity = "1";
-        const lines = d.type === "department"
-          ? `<strong>${d.name}</strong><div class="tt-row"><span class="tt-name">Type: </span> Government department</div>`
-          : `<strong>${d.name}</strong>
-         <div class="tt-row"><span class="tt-name">Type:</span> ${d.institutionType}</div>
-          <div class="tt-row"><span class="tt-name">Legal status:</span> ${d.legal}</div>`;
+
+    document.addEventListener('mousemove', (e) => {
+
+      const svgEl = svg.node();
+      const pt = svgEl.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const svgP = pt.matrixTransform(svgEl.getScreenCTM().inverse());
+
+      const gTransform = g.node().getCTM();
+      const localX = (svgP.x - gTransform.e) / gTransform.a;
+      const localY = (svgP.y - gTransform.f) / gTransform.d;
+
+      let hit = null;
+      for (const d of nodes) {
+        const dx = d.x - localX;
+        const dy = d.y - localY;
+        const r = nodeRadius(d) + 6; // slight hit padding
+        if (dx * dx + dy * dy < r * r) { hit = d; break; }
+      }
+
+      if (hit) {
+        const lines = hit.type === "department"
+          ? `<strong>${hit.name}</strong><div class="tt-row">Type: Government department</div>`
+          : `<strong>${hit.name}</strong>
+         <div class="tt-row"><span class="tt-name">Type:</span> ${hit.institutionType}</div>
+         <div class="tt-row"><span class="tt-name">Legal status:</span> ${hit.legal}</div>`;
         tooltip.innerHTML = lines;
-      })
-      .on("mousemove", event => {
-        tooltip.style.left = (event.pageX + 14) + "px";
-        tooltip.style.top = (event.pageY - 10) + "px";
-      })
-      .on("mouseout", () => { tooltip.style.opacity = "0"; });
+        tooltip.style.opacity = "1";
+        tooltip.style.left = (e.clientX + 14) + "px";
+        tooltip.style.top = (e.clientY - 10) + "px";
+      } else {
+        tooltip.style.opacity = "0";
+      }
+    });
 
-    // Department nodes → diamond shape
+    // Department nodes 
     nodeSel.filter(d => d.type === "department")
       .append("rect")
       .attr("width", d => nodeRadius(d) * 1.8)
@@ -329,7 +338,7 @@
       .attr("fill", d => nodeColour(d))
       .attr("fill-opacity", 1)
 
-    // Institution nodes → circle
+    // Institution nodes 
     nodeSel.filter(d => d.type === "institution")
       .append("circle")
       .attr("r", d => nodeRadius(d))
@@ -450,9 +459,8 @@
     drawLegend();
 
     window.addEventListener('wheel', (e) => {
-      e.preventDefault();
       window.parent.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
-    }, { passive: false });
+    }, { passive: true });
 
     let touchStartY = 0;
     window.addEventListener('touchstart', (e) => {
