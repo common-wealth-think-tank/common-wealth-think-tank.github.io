@@ -17,27 +17,33 @@
     html,
     body {
       overflow: hidden;
-      pointer-events: none;
     }
 
     #container {
       display: flex;
-      align-items: center;
-      height: 600px;
+      flex-direction: column;
       width: 100%;
+      height: auto;
     }
 
     #chart {
-      flex: 0 0 auto;
-      height: 100%;
+      width: 100%;
+      max-width: 600px;
+      aspect-ratio: 1 / 1;
+      align-self: flex-start;
     }
 
     #legend {
-      flex: 0 0 auto;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 16px;
       padding: 16px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 10px;
       line-height: 1.6;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .tooltip {
@@ -46,7 +52,6 @@
       border: 1px solid #333;
       padding: 8px;
       font-size: 10px;
-      pointer-events: none;
       opacity: 0;
       transition: opacity 0.15s;
       max-width: 200px;
@@ -61,28 +66,6 @@
     .tt-row,
     .tt-name {
       margin-bottom: 2px;
-    }
-
-    @media screen and (max-width: 700px) {
-      #container {
-        flex-direction: column;
-        height: 900px;
-        align-items: flex-start;
-      }
-
-      #chart {
-        flex: 1 1 auto;
-        width: 100%;
-      }
-
-      #chart svg {
-        width: 100%;
-      }
-
-      #legend {
-        width: 100%;
-        box-sizing: border-box;
-      }
     }
   </style>
 </head>
@@ -220,16 +203,6 @@
     getDims();
 
     const g = svg.append("g");
-    function recenter() {
-      const w = window.innerWidth;
-      const mob = w <= 767;
-      g.attr("transform", mob
-        ? `translate(300, 180)`    
-        : `translate(210, 300)`
-      );
-    }
-    recenter();
-    window.addEventListener('resize', recenter);
 
     // Layers (order matters for z-depth)
     const clusterLayer = g.append("g").attr("class", "clusters");
@@ -280,17 +253,6 @@
       .join("g")
       .attr("class", "node")
       .style("cursor", "pointer")
-      .call(d3.drag()
-        .on("start", (event, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x; d.fy = d.y;
-        })
-        .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
-        .on("end", (event, d) => {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = null; d.fy = null;
-        })
-      )
 
       .on("mouseover", (event, d) => {
         tooltip.style.opacity = "1";
@@ -364,7 +326,20 @@
       .attr("pointer-events", "none")
       .attr("opacity", 1);
 
+
     // Tick
+    function fitViewBox() {
+      const pad = 60;
+      const minX = d3.min(nodes, d => d.x) - pad;
+      const minY = d3.min(nodes, d => d.y) - pad;
+      const maxX = d3.max(nodes, d => d.x) + pad;
+      const maxY = d3.max(nodes, d => d.y) + pad;
+      const w = maxX - minX;
+      const h = maxY - minY;
+      svg.attr("viewBox", `${minX} ${minY} ${w} ${h}`);
+      document.getElementById("chart").style.aspectRatio = `1 / ${h / w}`;
+    }
+
     simulation.on("tick", () => {
       edgeSel
         .attr("x1", d => d.source.x)
@@ -390,7 +365,11 @@
         const minY = d3.min(pts, p => p[1]);
         d3.select(this).attr("x", minX).attr("y", minY - 42);
       });
+
+      fitViewBox(); // <-- here, at the end of tick, outside everything
     });
+
+    simulation.on("end", fitViewBox); // <-- here, separate, outside tick
 
 
     // Legend
@@ -398,10 +377,10 @@
       const el = document.getElementById("legend");
 
       function section(title, rows) {
-        return `<div style="margin-bottom:10px">
-      <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
-      ${rows.join("")}
-    </div>`;
+        return `<div style="margin-bottom:10px;flex:0 0 auto">
+    <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
+    ${rows.join("")}
+  </div>`;
       }
 
       function circleRow(color, label) {
@@ -439,21 +418,14 @@
     drawLegend();
 
     window.addEventListener('wheel', (e) => {
-      e.preventDefault();
       window.parent.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
-    }, { passive: false });
-
-    let touchStartY = 0;
-    window.addEventListener('touchstart', (e) => {
-      touchStartY = e.touches[0].clientY;
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
       const dy = touchStartY - e.touches[0].clientY;
-      e.preventDefault();
       window.parent.scrollBy({ top: dy, behavior: 'auto' });
       touchStartY = e.touches[0].clientY;
-    }, { passive: false });
+    }, { passive: true });
   </script>
 
 </body>
