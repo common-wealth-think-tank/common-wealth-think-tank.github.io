@@ -21,22 +21,30 @@
 
     #container {
       display: flex;
-      align-items: center;
-      height: 600px;
+      flex-direction: column;
       width: 100%;
+      height: auto;
+      padding: 24px;
     }
 
     #chart {
-      flex: 0 0 auto;
-      height: 100%;
+      width: 100%;
+      max-width: 600px;
+      aspect-ratio: 1 / 1;
+      align-self: flex-start;
     }
 
     #legend {
-      flex: 0 0 auto;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 16px;
       padding: 16px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 10px;
       line-height: 1.6;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .tooltip {
@@ -45,7 +53,6 @@
       border: 1px solid #333;
       padding: 8px;
       font-size: 10px;
-      pointer-events: none;
       opacity: 0;
       transition: opacity 0.15s;
       max-width: 200px;
@@ -61,30 +68,8 @@
     .tt-name {
       margin-bottom: 2px;
     }
-
-    @media screen and (max-width: 700px) {
-      #container {
-        flex-direction: column;
-        height: 900px;
-        align-items: flex-start;
-      }
-
-      #chart {
-        flex: 1 1 auto;
-        width: 100%;
-      }
-
-      #chart svg {
-        width: 100%;
-      }
-
-      #legend {
-        width: 100%;
-        box-sizing: border-box;
-      }
-    }
   </style>
-</head>
+  </head>
 
 <body>
   <div id="container">
@@ -230,16 +215,6 @@
     getDims();
 
     const g = svg.append("g");
-    function recenter() {
-      const w = window.innerWidth;
-      const mob = w <= 767;
-      g.attr("transform", mob
-        ? `translate(300, 180)`     // fixed coords within viewBox space
-        : `translate(210, 300)`
-      );
-    }
-    recenter();
-    window.addEventListener('resize', recenter);
 
     // Layers (order matters for z-depth)
     const clusterLayer = g.append("g").attr("class", "clusters");
@@ -291,43 +266,22 @@
       .attr("class", "node")
       .style("cursor", "pointer")
 
-
-    document.addEventListener('mousemove', (e) => {
-
-      const svgEl = svg.node();
-      const pt = svgEl.createSVGPoint();
-      pt.x = e.clientX;
-      pt.y = e.clientY;
-      const svgP = pt.matrixTransform(svgEl.getScreenCTM().inverse());
-
-      const gTransform = g.node().getCTM();
-      const localX = (svgP.x - gTransform.e) / gTransform.a;
-      const localY = (svgP.y - gTransform.f) / gTransform.d;
-
-      let hit = null;
-      for (const d of nodes) {
-        const dx = d.x - localX;
-        const dy = d.y - localY;
-        const r = nodeRadius(d) + 6; // slight hit padding
-        if (dx * dx + dy * dy < r * r) { hit = d; break; }
-      }
-
-      if (hit) {
-        const lines = hit.type === "department"
-          ? `<strong>${hit.name}</strong><div class="tt-row">Type: Government department</div>`
-          : `<strong>${hit.name}</strong>
-         <div class="tt-row"><span class="tt-name">Type:</span> ${hit.institutionType}</div>
-         <div class="tt-row"><span class="tt-name">Legal status:</span> ${hit.legal}</div>`;
-        tooltip.innerHTML = lines;
+      .on("mouseover", (event, d) => {
         tooltip.style.opacity = "1";
-        tooltip.style.left = (e.clientX + 14) + "px";
-        tooltip.style.top = (e.clientY - 10) + "px";
-      } else {
-        tooltip.style.opacity = "0";
-      }
-    });
+        const lines = d.type === "department"
+          ? `<strong>${d.name}</strong><div class="tt-row"><span class="tt-name">Type: </span> Government department</div>`
+          : `<strong>${d.name}</strong>
+         <div class="tt-row"><span class="tt-name">Type:</span> ${d.institutionType}</div>
+          <div class="tt-row"><span class="tt-name">Legal status:</span> ${d.legal}</div>`;
+        tooltip.innerHTML = lines;
+      })
+      .on("mousemove", event => {
+        tooltip.style.left = (event.pageX + 14) + "px";
+        tooltip.style.top = (event.pageY - 10) + "px";
+      })
+      .on("mouseout", () => { tooltip.style.opacity = "0"; });
 
-    // Department nodes 
+    // Department nodes → diamond shape
     nodeSel.filter(d => d.type === "department")
       .append("rect")
       .attr("width", d => nodeRadius(d) * 1.8)
@@ -338,7 +292,7 @@
       .attr("fill", d => nodeColour(d))
       .attr("fill-opacity", 1)
 
-    // Institution nodes 
+    // Institution nodes → circle
     nodeSel.filter(d => d.type === "institution")
       .append("circle")
       .attr("r", d => nodeRadius(d))
@@ -384,7 +338,20 @@
       .attr("pointer-events", "none")
       .attr("opacity", 1);
 
+
     // Tick
+    function fitViewBox() {
+      const pad = 60;
+      const minX = d3.min(nodes, d => d.x) - pad;
+      const minY = d3.min(nodes, d => d.y) - pad;
+      const maxX = d3.max(nodes, d => d.x) + pad;
+      const maxY = d3.max(nodes, d => d.y) + pad;
+      const w = maxX - minX;
+      const h = maxY - minY;
+      svg.attr("viewBox", `${minX} ${minY} ${w} ${h}`);
+      document.getElementById("chart").style.aspectRatio = `1 / ${h / w}`;
+    }
+
     simulation.on("tick", () => {
       edgeSel
         .attr("x1", d => d.source.x)
@@ -410,7 +377,11 @@
         const minY = d3.min(pts, p => p[1]);
         d3.select(this).attr("x", minX).attr("y", minY - 42);
       });
+
+      fitViewBox(); // <-- here, at the end of tick, outside everything
     });
+
+    simulation.on("end", fitViewBox); // <-- here, separate, outside tick
 
 
     // Legend
@@ -418,10 +389,10 @@
       const el = document.getElementById("legend");
 
       function section(title, rows) {
-        return `<div style="margin-bottom:10px">
-      <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
-      ${rows.join("")}
-    </div>`;
+        return `<div style="margin-bottom:10px;flex:0 0 auto">
+    <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
+    ${rows.join("")}
+  </div>`;
       }
 
       function circleRow(color, label) {
@@ -462,17 +433,11 @@
       window.parent.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
     }, { passive: true });
 
-    let touchStartY = 0;
-    window.addEventListener('touchstart', (e) => {
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-
     window.addEventListener('touchmove', (e) => {
       const dy = touchStartY - e.touches[0].clientY;
       window.parent.scrollBy({ top: dy, behavior: 'auto' });
       touchStartY = e.touches[0].clientY;
     }, { passive: true });
-
   </script>
 
 </body>
