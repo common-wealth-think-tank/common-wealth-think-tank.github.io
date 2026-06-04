@@ -68,7 +68,10 @@
 </head>
 
 <body>
-  <div id="chart"></div>
+  <div id="container">
+    <div id="chart"></div>
+    <div id="legend"></div>
+  </div>
   <div class="tooltip" id="tooltip"></div>
   <script>
 
@@ -392,98 +395,45 @@
 
     // Legend
     function drawLegend() {
-      const margin = 16;
-      const lineHeight = 18;
-      const swatchSize = 8;
-      const sectionGap = 10;
-      const sectionTitleHeight = 20;
-      const sections = [
-        { title: "Node type", rows: 2 },
-        { title: "Institution type", rows: institutionTypes.length },
-        { title: "Edge function", rows: edgeTypes.length },
-      ];
-      const panelHeight = margin * 2
-        + sections.reduce((sum, s) => sum + sectionTitleHeight + s.rows * lineHeight + sectionGap, 0);
+      const el = document.getElementById("legend");
 
-      const lg = svg.append("g")
-        .attr("class", "legend")
-        .attr("transform", `translate(${width - panelWidth - margin}, ${margin})`);
-      let y = margin;
-      const labelX = swatchSize * 2 + 10;
-
-      function sectionTitle(text) {
-        lg.append("text")
-          .attr("x", margin * 0.75)
-          .attr("y", y + 10)
-          .attr("fill", "#777")
-          .attr("font-family", "'JetBrains Mono', monospace")
-          .attr("font-size", "8px")
-          .attr("font-weight", "500")
-          .attr("letter-spacing", "0.1em")
-          .text(text.toUpperCase());
-        y += sectionTitleHeight;
+      function section(title, rows) {
+        return `<div style="margin-bottom:10px">
+      <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
+      ${rows.join("")}
+    </div>`;
       }
 
-      function rowLabel(text) {
-        lg.append("text")
-          .attr("x", labelX + margin * 0.75)
-          .attr("y", y + swatchSize * 0.5)
-          .attr("dominant-baseline", "middle")
-          .attr("fill", "#333")
-          .attr("font-family", "'JetBrains Mono', monospace")
-          .attr("font-size", "10px")
-          .text(text);
+      function circleRow(color, label) {
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${color}"/></svg>
+      <span>${label}</span>
+    </div>`;
       }
 
-      // Node type
-      sectionTitle("Node type");
-      const ds = swatchSize;
-      lg.append("rect")
-        .attr("x", margin * 0.75 + ds * 0.5)
-        .attr("y", y)
-        .attr("width", ds)
-        .attr("height", ds)
-        .attr("transform", `rotate(45, ${margin * 0.75 + ds}, ${y + ds * 0.5})`)
-        .attr("fill", "#333");
-      rowLabel("Government department");
-      y += lineHeight;
+      function diamondRow(color, label) {
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg width="14" height="14"><rect x="3" y="3" width="8" height="8" transform="rotate(45,7,7)" fill="${color}"/></svg>
+      <span>${label}</span>
+    </div>`;
+      }
 
-      lg.append("circle")
-        .attr("cx", margin * 0.75 + ds)
-        .attr("cy", y + swatchSize * 0.5)
-        .attr("r", swatchSize * 0.6)
-        .attr("fill", "#333");
-      rowLabel("Institution");
-      y += lineHeight + sectionGap;
+      function edgeRow(dasharray, label) {
+        const dash = dasharray ? `stroke-dasharray="${dasharray}"` : "";
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg width="20" height="14"><line x1="0" y1="7" x2="20" y2="7" stroke="#333" stroke-width="1.5" ${dash}/></svg>
+      <span>${label}</span>
+    </div>`;
+      }
 
-      // Institution type
-      sectionTitle("Institution type");
-      institutionTypes.forEach(d => {
-        lg.append("circle")
-          .attr("cx", margin * 0.75 + ds)
-          .attr("cy", y + swatchSize * 0.5)
-          .attr("r", swatchSize * 0.6)
-          .attr("fill", d.color);
-        rowLabel(d.label);
-        y += lineHeight;
-      });
-      y += sectionGap;
-
-      // Edge function
-      sectionTitle("Function");
-      const lineLen = 20;
-      edgeTypes.forEach(d => {
-        lg.append("line")
-          .attr("x1", margin * 0.75)
-          .attr("y1", y + swatchSize * 0.5)
-          .attr("x2", margin * 0.75 + lineLen)
-          .attr("y2", y + swatchSize * 0.5)
-          .attr("stroke", "#333")
-          .attr("stroke-width", 1.5)
-          .attr("stroke-dasharray", d.dasharray || null);
-        rowLabel(d.label);
-        y += lineHeight;
-      });
+      el.innerHTML = [
+        section("Node type", [
+          diamondRow("#333", "Government department"),
+          circleRow("#333", "Institution"),
+        ]),
+        section("Institution type", institutionTypes.map(d => circleRow(d.color, d.label))),
+        section("Function", edgeTypes.map(d => edgeRow(d.dasharray, d.label))),
+      ].join("");
     }
 
     drawLegend();
