@@ -29,7 +29,7 @@
 
     #chart {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       aspect-ratio: 1 / 1;
       align-self: flex-start;
     }
@@ -127,7 +127,6 @@
       "Fiscal policy": { fill: "#F1EBE4" },
     });
 
-
     function nodeRadius(d) {
       return d.type === "department" ? 28 : 14;
     };
@@ -193,16 +192,6 @@
       .style("height", "100%");
     const tooltip = document.getElementById("tooltip");
 
-    let width, height;
-
-    function getDims() {
-      const rect = svg.node().getBoundingClientRect();
-      width = rect.width;
-      height = rect.height;
-    }
-
-    getDims();
-
     const g = svg.append("g");
 
     // Layers (order matters for z-depth)
@@ -211,14 +200,14 @@
     const nodeLayer = g.append("g").attr("class", "nodes");
     const nameLayer = g.append("g").attr("class", "names");
 
-    // Force simulation
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
-    const simulation = d3.forceSimulation(nodes)
+    // Run simulation synchronously
+
+    d3.forceSimulation(nodes)
       .force("link", d3.forceLink(edges)
         .id(d => d.id)
         .distance(d => {
-          // Departments attract institutions closer
           const src = nodeMap.get(d.source.id || d.source);
           const tgt = nodeMap.get(d.target.id || d.target);
           if (src?.type === "department" || tgt?.type === "department") return 110;
@@ -237,24 +226,43 @@
         return 0;
       }).strength(0.18))
       .force("centerX", d3.forceX(0).strength(0.03))
-      .force("centerY", d3.forceY(0).strength(0.03));
+      .force("centerY", d3.forceY(0).strength(0.03))
+      .stop()
+      .tick(300);
 
-    // Draw edges 
-    const edgeSel = edgeLayer.selectAll("line")
+    // Compute viewBox once from settled positions
+    const pad = 60;
+    const minX = d3.min(nodes, d => d.x) - pad;
+    const minY = d3.min(nodes, d => d.y) - pad;
+    const maxX = d3.max(nodes, d => d.x) + pad;
+    const maxY = d3.max(nodes, d => d.y) + pad;
+    const vbW = maxX - minX;
+    const vbH = maxY - minY;
+    svg.attr("viewBox", `${minX} ${minY} ${vbW} ${vbH}`);
+    document.getElementById("chart").style.aspectRatio = `1 / ${vbH / vbW}`;
+
+    // Draw everything once from final positions
+
+    // Edges
+    edgeLayer.selectAll("line")
       .data(edges)
       .join("line")
       .attr("stroke", d => edgeStyle[d.function]?.stroke || "#333")
       .attr("stroke-width", d => edgeStyle[d.function]?.width || 1.5)
       .attr("stroke-dasharray", d => edgeStyle[d.function]?.dasharray || null)
-      .attr("opacity", 1);
+      .attr("opacity", 1)
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
 
-    // Draw nodes
+    // Nodes
     const nodeSel = nodeLayer.selectAll("g.node")
       .data(nodes)
       .join("g")
       .attr("class", "node")
+      .attr("transform", d => `translate(${d.x},${d.y})`)
       .style("cursor", "pointer")
-
       .on("mouseover", (event, d) => {
         tooltip.style.opacity = "1";
         const lines = d.type === "department"
@@ -279,20 +287,22 @@
       .attr("y", d => -nodeRadius(d) * 0.9)
       .attr("transform", "rotate(45)")
       .attr("fill", d => nodeColour(d))
-      .attr("fill-opacity", 1)
+      .attr("fill-opacity", 1);
 
     // Institution nodes → circle
     nodeSel.filter(d => d.type === "institution")
       .append("circle")
       .attr("r", d => nodeRadius(d))
       .attr("fill", d => nodeColour(d))
-      .attr("fill-opacity", 1)
+      .attr("fill-opacity", 1);
 
-    // Names 
-    const nameSel = nameLayer.selectAll("text")
+    // Names
+    nameLayer.selectAll("text")
       .data(nodes)
       .join("text")
       .text(d => d.abbr || d.name)
+      .attr("x", d => d.x)
+      .attr("y", d => d.y)
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
       .attr("fill", "#fff")
@@ -304,17 +314,22 @@
     // Clusters
     const clusters = [...new Set(nodes.filter(n => n.cluster).map(n => n.cluster))];
 
-    const hullSel = clusterLayer.selectAll("path.cluster-hull")
+    // Hulls
+    clusterLayer.selectAll("path.cluster-hull")
       .data(clusters)
       .join("path")
       .attr("class", "cluster-hull")
       .attr("fill", d => clusterStyle[d]?.fill || "rgba(255,255,255,0.04)")
       .attr("stroke-width", 1.5)
       .attr("stroke-linejoin", "round")
-      .attr("stroke-dasharray", "4,3");
+      .attr("stroke-dasharray", "4,3")
+      .attr("d", clusterName => {
+        const pts = nodes.filter(n => n.cluster === clusterName).map(n => [n.x, n.y]);
+        return hullPath(pts, 36) || "";
+      });
 
-    // Cluster name
-    const clusternameSel = clusterLayer.selectAll("text.cluster-name")
+    // Cluster labels
+    clusterLayer.selectAll("text.cluster-name")
       .data(clusters)
       .join("text")
       .attr("class", "cluster-name")
@@ -325,53 +340,14 @@
       .attr("font-weight", "300")
       .attr("letter-spacing", "0.06em")
       .attr("pointer-events", "none")
-      .attr("opacity", 1);
-
-
-    // Tick
-    function fitViewBox() {
-      const pad = 60;
-      const minX = d3.min(nodes, d => d.x) - pad;
-      const minY = d3.min(nodes, d => d.y) - pad;
-      const maxX = d3.max(nodes, d => d.x) + pad;
-      const maxY = d3.max(nodes, d => d.y) + pad;
-      const w = maxX - minX;
-      const h = maxY - minY;
-      svg.attr("viewBox", `${minX} ${minY} ${w} ${h}`);
-      document.getElementById("chart").style.aspectRatio = `1 / ${h / w}`;
-    }
-
-    simulation.on("tick", () => {
-      edgeSel
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y);
-
-      nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
-
-      nameSel.attr("x", d => d.x).attr("y", d => d.y);
-
-      hullSel.attr("d", clusterName => {
-        const pts = nodes
-          .filter(n => n.cluster === clusterName)
-          .map(n => [n.x, n.y]);
-        return hullPath(pts, 36) || "";
-      });
-
-      clusternameSel.each(function (clusterName) {
+      .attr("opacity", 1)
+      .each(function (clusterName) {
         const pts = nodes.filter(n => n.cluster === clusterName).map(n => [n.x, n.y]);
         if (!pts.length) return;
-        const minX = d3.min(pts, p => p[0]);
-        const minY = d3.min(pts, p => p[1]);
-        d3.select(this).attr("x", minX).attr("y", minY - 42);
+        const x = d3.min(pts, p => p[0]);
+        const y = d3.min(pts, p => p[1]);
+        d3.select(this).attr("x", x).attr("y", y - 42);
       });
-
-      fitViewBox(); // <-- here, at the end of tick, outside everything
-    });
-
-    simulation.on("end", fitViewBox); // <-- here, separate, outside tick
-
 
     // Legend
     function drawLegend() {
