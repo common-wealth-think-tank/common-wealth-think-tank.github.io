@@ -12,6 +12,7 @@
     body {
       margin: 0;
       font-family: 'JetBrains Mono', monospace;
+      background: #fff;
     }
 
     html,
@@ -27,14 +28,10 @@
       box-sizing: border-box;
     }
 
-    .chart-wrap {
+    #chart {
       width: 100%;
-      max-width: 560px;
-    }
-
-    .chart-svg {
-      width: 100%;
-      display: block;
+      max-width: 640px;
+      align-self: flex-start;
     }
 
     #legend {
@@ -77,18 +74,106 @@
 
 <body>
   <div id="container">
-    <div class="chart-wrap">
-      <svg id="svg1" class="chart-svg"></svg>
-    </div>
-    <div class="chart-wrap">
-      <svg id="svg2" class="chart-svg"></svg>
-    </div>
+    <div id="chart"></div>
     <div id="legend"></div>
   </div>
   <div class="tooltip" id="tooltip"></div>
-
   <script>
-    // Visual mapping
+
+
+    const nodes = [
+      // Institutions
+      { id: "N10", name: "Prime Minister's Office", abbr: "N10", type: "institution", institutionType: "Executive body", cluster: "Political input and coordination", department: "CO", legal: "Executive office", x: 145.6, y: 104.2 },
+      { id: "GCA", name: "Government Commercial Agency", abbr: "GCA", type: "institution", institutionType: "Procurement agency", cluster: "Procurement policy", department: "CO", legal: "Executive agency", x: 865.6, y: 104.2 },
+      { id: "UKSA", name: "UK Statistics Authority", abbr: "UKSA", type: "institution", institutionType: "Statistical authority", cluster: "Data gathering and intelligence", department: "CO", legal: "Non-ministerial department", x: 1111.1, y: 242.8 },
+      { id: "NSI", name: "National Security and Intelligence", abbr: "NSI", type: "institution", institutionType: "Intelligence service", cluster: "Data gathering and intelligence", department: "CO", legal: "Unspecified", x: 1048.7, y: 316.4 },
+      { id: "MI5", name: "Security Service", abbr: "MI5", type: "institution", institutionType: "Intelligence service", cluster: "Data gathering and intelligence", department: "HO", legal: "Unspecified", x: 1110.6, y: 415.8 },
+      { id: "NISTA", name: "National Infrastructure and Service Transformation Authority", abbr: "NISTA", type: "institution", institutionType: "Executive body", cluster: "Infrastructure development", department: "Joint", legal: "Executive agency", x: 46.9, y: 515.2 },
+      { id: "PI", name: "Planning Inspectorate", abbr: "PI", type: "institution", institutionType: "Executive body", cluster: "Infrastructure development", department: "MHCLG", legal: "Executive agency", x: 191.3, y: 584.0 },
+      { id: "HMLR", name: "HM Land Registry", abbr: "HMLR", type: "institution", institutionType: "Executive body", cluster: "Management of public assets", department: "MHCLG", legal: "Non-ministerial department", x: 709.8, y: 587.2 },
+      { id: "UKGI", name: "UK Government Investments", abbr: "UKGI", type: "institution", institutionType: "State holding agency", cluster: "Management of public assets", department: "HMT", legal: "Company wholly-owned", x: 836.8, y: 586.3 },
+      { id: "TCE", name: "The Crown Estate", abbr: "TCE", type: "institution", institutionType: "Publicly owned company", cluster: "Management of public assets", department: "HMT", legal: "Non-financial public corporation", x: 835.9, y: 713.3 },
+      { id: "CS", name: "Competition Service", abbr: "CS", type: "institution", institutionType: "Advisory body", cluster: "Competition policy", department: "DBT1", legal: "Executive non-departmental public body", x: 1125.6, y: 641.9 },
+      { id: "CAT", name: "Competition Appeal Tribunal", abbr: "CAT", type: "institution", institutionType: "Judicial body", cluster: "Competition policy", department: "DBT1", legal: "Tribunal", x: 1012.7, y: 690.1 },
+      { id: "SAU", name: "Subsidy Advice Unit", abbr: "SAU", type: "institution", institutionType: "Advisory body", cluster: "Competition policy", department: "DBT1", legal: "Unit of a non-ministerial department", x: 1157.1, y: 758.9 },
+      { id: "CMA", name: "Competition and Markets Authority", abbr: "CMA", type: "institution", institutionType: "Regulatory body", cluster: "Competition policy", department: "DBT1", legal: "Non-ministerial department", x: 1058.7, y: 786.4 },
+      { id: "BBB", name: "British Business Bank", abbr: "BBB", type: "institution", institutionType: "Publicly owned company", cluster: "Public financing", department: "DBT1", legal: "Company", x: 57.4, y: 930.2 },
+      { id: "NWF", name: "National Wealth Fund", abbr: "NWF", type: "institution", institutionType: "Publicly owned company", cluster: "Public financing", department: "HMT", legal: "Executive non-departmental public body", x: 256.1, y: 972.5 },
+      { id: "NSSIF", name: "National Security Strategic Investment Fund", abbr: "NSSIF", type: "institution", institutionType: "Publicly owned company", cluster: "Public financing", department: "DSIT", legal: "Owned by British Technology Investments Ltd", x: 120.9, y: 1002.9 },
+      { id: "UKRI", name: "UK Research and Innovation", abbr: "UKRI", type: "institution", institutionType: "Executive body", cluster: "R&D funding and infrastructure", department: "DSIT", legal: "Executive non-departmental public body", x: 84.9, y: 1296.4 },
+      { id: "ARIA", name: "Advanced Research and Invention Agency", abbr: "ARIA", type: "institution", institutionType: "Executive body", cluster: "R&D funding and infrastructure", department: "DSIT", legal: "Executive non-departmental public body", x: 143.8, y: 1169.2 },
+      { id: "IPO", name: "Intellectual Property Office", abbr: "IPO", type: "institution", institutionType: "Regulatory body", cluster: "Technology transfer", department: "DSIT", legal: "Office of department", x: 522.6, y: 1112.8 },
+      { id: "RIO", name: "Regulatory Innovation Office", abbr: "RIO", type: "institution", institutionType: "Regulatory body", cluster: "Technology transfer", department: "DSIT", legal: "Non-ministerial department", x: 615.7, y: 1068.2 },
+      { id: "GOTT", name: "Government Office for Technology Transfer", abbr: "GOTT", type: "institution", institutionType: "Executive body", cluster: "Technology transfer", department: "DSIT", legal: "Non-ministerial department", x: 671.2, y: 1155.3 },
+      { id: "MO", name: "Met Office", abbr: "MO", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DSIT", legal: "Executive agency", x: 369.3, y: 1429.2 },
+      { id: "GOS", name: "Government Office for Science", abbr: "GOS", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DSIT", legal: "Non-ministerial department", x: 415.6, y: 1560.1 },
+      { id: "BOT", name: "Board of Trade", abbr: "BOT", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DBT2", legal: "Unspecified", x: 567.8, y: 1510.1 },
+      { id: "ETF", name: "Evaluation Task Force", abbr: "ETF", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "Joint2", legal: "Non-ministerial department", x: 514.7, y: 1621.2 },
+      { id: "GES", name: "Government Economic Service", abbr: "GES", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "CS", legal: "Unspecified", x: 466.5, y: 1722.3 },
+      { id: "CCC", name: "Committee on Climate Change", abbr: "CCC", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DESNZ", legal: "Executive non-departmental public body", x: 277.6, y: 1631.1 },
+      { id: "OfI", name: "Office for Investment", abbr: "OfI", type: "institution", institutionType: "Advisory body", cluster: "Industry competitiveness", department: "Joint2", legal: "Office of department", x: 857.5, y: 1210.3 },
+      { id: "ISAC", name: "Industrial Strategy Advisory Council", abbr: "ISAC", type: "institution", institutionType: "Advisory body", cluster: "Industry competitiveness", department: "Joint2", legal: "Expert committee", x: 971.7, y: 1283.4 },
+      { id: "OIT", name: "Open Innovation Team", abbr: "OIT", type: "institution", institutionType: "Advisory body", cluster: "Workforce development", department: "SVCS", legal: "Cross-government unit", x: 1034.3, y: 1780.3 },
+      { id: "GAF", name: "Government Analysis Function", abbr: "GAF", type: "institution", institutionType: "Advisory body", cluster: "Workforce development", department: "SVCS", legal: "Unspecified", x: 982.0, y: 1869.4 },
+      { id: "SE", name: "Skills England", abbr: "SE", type: "institution", institutionType: "Executive body", cluster: "Workforce development", department: "DWP", legal: "Executive agency", x: 1137.6, y: 1779.3 },
+
+      // Departments (DBT and Joint departments appear twice)
+      { id: "CO", name: "Cabinet Office", abbr: "CO", type: "department", x: 505.6, y: 208.5 },
+      { id: "HO", name: "Home Office", abbr: "HO", type: "department", x: 685.6, y: 388.5 },
+      { id: "MHCLG", name: "Ministry of Housing, Communities and Local Government", abbr: "MHCLG", type: "department", x: 504.7, y: 567.6 },
+      { id: "HMT", name: "HM Treasury", abbr: "HMT", type: "department", x: 504.7, y: 888.5 },
+      { id: "DBT1", name: "Department for Business & Trade", abbr: "DBT", type: "department", x: 325.6, y: 748.5 },
+      { id: "DSIT", name: "Department for Science, Innovation and Technology", abbr: "DSIT", type: "department", x: 505.6, y: 1288.5 },
+      { id: "DESNZ", name: "Department for Energy Security and Net Zero", abbr: "DESNZ", type: "department", x: 147.7, y: 1469.1 },
+      { id: "Joint2", name: "Joint departments", abbr: "Joint", type: "department", x: 775.8, y: 1554.1 },
+      { id: "SVCS", name: "Civil Service", abbr: "CS", type: "department", x: 775.8, y: 1828.5 },
+      { id: "DWP", name: "Department for Work and Pensions", abbr: "DWP", type: "department", x: 1044.6, y: 1468.5 },
+      { id: "DBT2", name: "Department for Business & Trade", abbr: "DBT", type: "department", x: 865.6, y: 1020.8 },
+      { id: "Joint", name: "Joint departments", abbr: "Joint", type: "department", x: 325.6, y: 388.5 },
+    ];
+
+    // Edges 
+    const edges = [
+      { source: "N10", target: "CO", function: "Executive" },
+      { source: "GCA", target: "CO", function: "Executive" },
+      { source: "UKSA", target: "CO", function: "Executive" },
+      { source: "NSI", target: "CO", function: "Executive" },
+      { source: "MI5", target: "HO", function: "Executive" },
+      { source: "NISTA", target: "Joint", function: "Executive" },
+      { source: "NISTA", target: "Joint", function: "Advisory" },
+      { source: "PI", target: "MHCLG", function: "Executive" },
+      { source: "HMLR", target: "MHCLG", function: "Executive" },
+      { source: "UKGI", target: "HMT", function: "Executive" },
+      { source: "UKGI", target: "HMT", function: "Advisory" },
+      { source: "TCE", target: "HMT", function: "Executive" },
+      { source: "NWF", target: "HMT", function: "Financing" },
+      { source: "BBB", target: "DBT1", function: "Financing" },
+      { source: "CS", target: "DBT2", function: "Advisory" },
+      { source: "CAT", target: "DBT2", function: "Judicial" },
+      { source: "SAU", target: "DBT2", function: "Advisory" },
+      { source: "CMA", target: "DBT2", function: "Regulatory" },
+      { source: "NSSIF", target: "DSIT", function: "Financing" },
+      { source: "UKRI", target: "DSIT", function: "Executive" },
+      { source: "UKRI", target: "DSIT", function: "Financing" },
+      { source: "ARIA", target: "DSIT", function: "Executive" },
+      { source: "ARIA", target: "DSIT", function: "Financing" },
+      { source: "IPO", target: "DSIT", function: "Regulatory" },
+      { source: "RIO", target: "DSIT", function: "Regulatory" },
+      { source: "GOTT", target: "DSIT", function: "Executive" },
+      { source: "MO", target: "DSIT", function: "Advisory" },
+      { source: "GOS", target: "DSIT", function: "Advisory" },
+      { source: "BOT", target: "DBT2", function: "Advisory" },
+      { source: "ETF", target: "Joint2", function: "Advisory" },
+      { source: "GES", target: "SVCS", function: "Advisory" },
+      { source: "CCC", target: "DESNZ", function: "Advisory" },
+      { source: "OfI", target: "Joint2", function: "Advisory" },
+      { source: "ISAC", target: "Joint2", function: "Advisory" },
+      { source: "OIT", target: "SVCS", function: "Advisory" },
+      { source: "GAF", target: "SVCS", function: "Advisory" },
+      { source: "SE", target: "DWP", function: "Executive" },
+    ];
+
+    // Visual mappings
 
     const institutionTypes = [
       { label: "Executive body", color: "#FFA69E" },
@@ -107,51 +192,57 @@
     );
 
     const edgeStyle = {
-      "Financing": { stroke: "#333", dasharray: null, width: 1.5 },
-      "Advisory": { stroke: "#333", dasharray: "5,3", width: 1.5 },
-      "Regulatory": { stroke: "#333", dasharray: "8,3,2,3", width: 1.5 },
-      "Executive": { stroke: "#333", dasharray: "1.5,3", width: 1.5 },
-      "Judicial": { stroke: "#333", dasharray: "8,2", width: 1.5 },
+      "Financing": { stroke: "#333", dasharray: null, width: 2 },
+      "Advisory": { stroke: "#333", dasharray: "8,4", width: 2 },
+      "Regulatory": { stroke: "#333", dasharray: "8,6,2,6", width: 2 },
+      "Executive": { stroke: "#333", dasharray: "1,8", width: 3 },
+      "Judicial": { stroke: "#333", dasharray: "12,6", width: 2 },
     };
 
-    const edgeTypes = Object.entries(edgeStyle)
-      .map(([label, s]) => ({ label, dasharray: s.dasharray }));
+    const edgeTypes = Object.entries(edgeStyle).map(([label, s]) => ({ label, dasharray: s.dasharray }));
 
-    function nodeRadius(d) { return d.type === "department" ? 28 : 14; }
-
+    function nodeRadius(d) { return d.type === "department" ? 50 : 30; }
     function nodeColour(d) {
       if (d.type === "department") return "#333";
       return institutionTypeColour[d.institutionType] ?? "#7a8399";
     }
 
-    // Cluster hulls
+    // Hull helper 
+
+
+    const expandHull = (points, padding) => {
+      const hull = d3.polygonHull(points);
+      if (!hull) return null;
+      const cx = d3.mean(hull, p => p[0]);
+      const cy = d3.mean(hull, p => p[1]);
+      const expanded = hull.map(p => {
+        const dx = p[0] - cx, dy = p[1] - cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        return [p[0] + dx / len * padding, p[1] + dy / len * padding];
+      });
+      return "M" + expanded.map(p => p.join(",")).join("L") + "Z";
+    };
 
     function hullPath(points, padding) {
       if (!points.length) return null;
       if (points.length === 1) {
         const [x, y] = points[0];
-        const r = padding * 0.5;
-        return hullPath(
-          Array.from({ length: 4 }, (_, i) => {
-            const a = (i / 4) * 2 * Math.PI;
-            return [x + r * Math.cos(a), y + r * Math.sin(a)];
-          }), padding
-        );
+        const r = padding * 1;
+        const synthetic = [0, 1, 2, 3].map(i => {
+          const angle = (i / 4) * 2 * Math.PI + Math.PI / 4;
+          return [x + r * Math.cos(angle), y + r * Math.sin(angle)];
+        });
+        return expandHull(synthetic, padding);
       }
       if (points.length === 2) {
-        const dx = points[1][0] - points[0][0];
-        const dy = points[1][1] - points[0][1];
+        const dx = points[1][0] - points[0][0], dy = points[1][1] - points[0][1];
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
         const ux = -dy / len * padding, uy = dx / len * padding;
-        return `M${points[0][0] + ux},${points[0][1] + uy}
-                L${points[1][0] + ux},${points[1][1] + uy}
-                L${points[1][0] - ux},${points[1][1] - uy}
-                L${points[0][0] - ux},${points[0][1] - uy}Z`;
+        return `M${points[0][0] + ux},${points[0][1] + uy}L${points[1][0] + ux},${points[1][1] + uy}L${points[1][0] - ux},${points[1][1] - uy}L${points[0][0] - ux},${points[0][1] - uy}Z`;
       }
       const hull = d3.polygonHull(points);
       if (!hull) return null;
-      const cx = d3.mean(hull, p => p[0]);
-      const cy = d3.mean(hull, p => p[1]);
+      const cx = d3.mean(hull, p => p[0]), cy = d3.mean(hull, p => p[1]);
       return "M" + hull.map(p => {
         const dx = p[0] - cx, dy = p[1] - cy;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -159,311 +250,251 @@
       }).join("L") + "Z";
     }
 
-    // Tooltips
+    // Tooltip 
 
     const tooltip = document.getElementById("tooltip");
 
-    function showTooltip(event, d) {
-      tooltip.style.opacity = "1";
-      tooltip.innerHTML = d.type === "department"
-        ? `<strong>${d.name}</strong><div class="tt-row">Government department</div>`
-        : `<strong>${d.name}</strong>
+    // SVG 
+    const pad = 80;
+    const minX = d3.min(nodes, d => d.x) - pad;
+    const minY = d3.min(nodes, d => d.y) - pad;
+    const maxX = d3.max(nodes, d => d.x) + pad;
+    const maxY = d3.max(nodes, d => d.y) + pad;
+    const vbW = maxX - minX;
+    const vbH = maxY - minY;
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("viewBox", `${minX} ${minY} ${vbW} ${vbH}`)
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("width", "100%");
+
+    document.getElementById("chart").style.aspectRatio = `${vbW} / ${vbH}`;
+
+    const gRoot = svg.append("g");
+
+    svg.call(d3.zoom()
+      .scaleExtent([0.3, 6])
+      .on("zoom", e => gRoot.attr("transform", e.transform))
+    );
+
+    const clusterLayer = gRoot.append("g");
+    const edgeLayer = gRoot.append("g");
+    const nodeLayer = gRoot.append("g");
+    const labelLayer = gRoot.append("g");
+
+    // Cluster hulls
+    const clusterNames = [...new Set(nodes.filter(n => n.cluster).map(n => n.cluster))];
+    const instNodes = nodes.filter(n => n.type === "institution");
+
+    clusterLayer.selectAll("path.hull")
+      .data(clusterNames)
+      .join("path")
+      .attr("class", "hull")
+      .attr("d", name =>
+        hullPath(instNodes.filter(n => n.cluster === name).map(n => [n.x, n.y]), 40) ?? ""
+      )
+      .attr("fill", "#F1EBE4")
+      .attr("fill-opacity", 1)
+
+    // Cluster labels
+    clusterLayer.selectAll("text.cluster-label")
+      .data(clusterNames)
+      .join("text")
+      .attr("class", "cluster-label")
+      .each(function (name) {
+        const members = instNodes.filter(n => n.cluster === name);
+        const x = d3.min(members, n => n.x) - 48;
+        const y = d3.min(members, n => n.y) - 64;
+        d3.select(this).attr("x", x).attr("y", y);
+      })
+      .attr("fill", "#555")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("font-size", "20px")
+      .attr("font-weight", "300")
+      .attr("letter-spacing", "0.06em")
+      .attr("pointer-events", "none")
+      .each(function (name) {
+        const el = d3.select(this);
+        const words = name.split(" ");
+        const maxChars = 18;
+        const lines = [];
+        let current = "";
+        for (const word of words) {
+          const candidate = current ? current + " " + word : word;
+          if (candidate.length > maxChars && current) { lines.push(current); current = word; }
+          else current = candidate;
+        }
+        if (current) lines.push(current);
+        lines.forEach((line, i) => {
+          el.append("tspan")
+            .attr("x", el.attr("x"))
+            .attr("dy", i === 0 ? "0" : "1.2em")
+            .text(line);
+        });
+      });
+
+    // Edges
+
+    const nodeById = new Map(nodes.map(n => [n.id, n]));
+
+    // Offset parallel edges for doubles
+    const edgeKey = e => [e.source, e.target].sort().join("__");
+    const edgeCounts = new Map();
+    edges.forEach(e => {
+      const k = edgeKey(e);
+      edgeCounts.set(k, (edgeCounts.get(k) ?? 0) + 1);
+    });
+    const edgeIndex = new Map();
+    edges.forEach(e => {
+      const k = edgeKey(e);
+      edgeIndex.set(e, edgeIndex.size);
+    });
+
+    // Track index within each pair for offset
+    const pairCounter = new Map();
+    edges.forEach(e => {
+      const k = edgeKey(e);
+      const i = pairCounter.get(k) ?? 0;
+      e._pairIndex = i;
+      e._pairTotal = edgeCounts.get(k);
+      pairCounter.set(k, i + 1);
+    });
+
+    edgeLayer.selectAll("line.edge")
+      .data(edges)
+      .join("line")
+      .attr("class", "edge")
+      .attr("x1", e => {
+        const n = nodeById.get(e.source);
+        if (e._pairTotal > 1) {
+          const tgt = nodeById.get(e.target);
+          const dx = tgt.y - n.y, dy = n.x - tgt.x;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const offset = (e._pairIndex - (e._pairTotal - 1) / 2) * 5;
+          return n.x + dx / len * offset;
+        }
+        return n.x;
+      })
+      .attr("y1", e => {
+        const n = nodeById.get(e.source);
+        if (e._pairTotal > 1) {
+          const tgt = nodeById.get(e.target);
+          const dx = tgt.y - n.y, dy = n.x - tgt.x;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const offset = (e._pairIndex - (e._pairTotal - 1) / 2) * 5;
+          return n.y + dy / len * offset;
+        }
+        return n.y;
+      })
+      .attr("x2", e => {
+        const n = nodeById.get(e.target);
+        if (e._pairTotal > 1) {
+          const src = nodeById.get(e.source);
+          const dx = n.y - src.y, dy = src.x - n.x;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const offset = (e._pairIndex - (e._pairTotal - 1) / 2) * 5;
+          return n.x + dx / len * offset;
+        }
+        return n.x;
+      })
+      .attr("y2", e => {
+        const n = nodeById.get(e.target);
+        if (e._pairTotal > 1) {
+          const src = nodeById.get(e.source);
+          const dx = n.y - src.y, dy = src.x - n.x;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const offset = (e._pairIndex - (e._pairTotal - 1) / 2) * 5;
+          return n.y + dy / len * offset;
+        }
+        return n.y;
+      })
+      .attr("stroke", e => edgeStyle[e.function]?.stroke ?? "#333")
+      .attr("stroke-width", e => edgeStyle[e.function]?.width ?? 1.5)
+      .attr("stroke-dasharray", e => edgeStyle[e.function]?.dasharray ?? null)
+      .attr("stroke-linecap", e => e.function === "Executive" ? "round" : "butt")
+      .attr("opacity", 0.85);
+
+    // Nodes
+
+    const nodeSel = nodeLayer.selectAll("g.node")
+      .data(nodes)
+      .join("g")
+      .attr("class", "node")
+      .attr("transform", d => `translate(${d.x},${d.y})`)
+      .style("cursor", "pointer")
+      .on("mouseover", (event, d) => {
+        tooltip.style.opacity = "1";
+        tooltip.innerHTML = d.type === "department"
+          ? `<strong>${d.name}</strong><div class="tt-row">Government department</div>`
+          : `<strong>${d.name}</strong>
            <div class="tt-row">Type: ${d.institutionType}</div>
+           <div class="tt-row">Department: ${d.institutionType}</div>
            <div class="tt-row">Cluster: ${d.cluster}</div>
-           <div class="tt-row">Department: ${d.department}</div>
-           <div class="tt-row">Legal status: ${d.legal ?? "—"}</div>`;
-    }
-    function moveTooltip(event) {
-      tooltip.style.left = (event.pageX + 14) + "px";
-      tooltip.style.top = (event.pageY - 10) + "px";
-    }
-    function hideTooltip() { tooltip.style.opacity = "0"; }
+           <div class="tt-row">Legal: ${d.legal ?? "—"}</div>`;
+      })
+      .on("mousemove", event => {
+        tooltip.style.left = (event.pageX + 14) + "px";
+        tooltip.style.top = (event.pageY - 10) + "px";
+      })
+      .on("mouseout", () => { tooltip.style.opacity = "0"; });
 
-    // Chart
+    // Department
+    nodeSel.filter(d => d.type === "department")
+      .append("rect")
+      .attr("width", d => nodeRadius(d) * 1.8)
+      .attr("height", d => nodeRadius(d) * 1.8)
+      .attr("x", d => -nodeRadius(d) * 0.9)
+      .attr("y", d => -nodeRadius(d) * 0.9)
+      .attr("transform", "rotate(45)")
+      .attr("fill", nodeColour);
 
-    function buildChart(svgEl, nodes, edges, clusterCentroids) {
+    // Institution 
+    nodeSel.filter(d => d.type === "institution")
+      .append("circle")
+      .attr("r", nodeRadius)
+      .attr("fill", nodeColour);
 
-      // Simulation
-      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    // Labels
+    labelLayer.selectAll("text.node-label")
+      .data(nodes)
+      .join("text")
+      .attr("class", "node-label")
+      .attr("x", d => d.x)
+      .attr("y", d => d.y)
+      .text(d => d.abbr)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("fill", "#fff")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("font-size", d => d.type === "department" ? "18px" : "14px")
+      .attr("font-weight", d => d.type === "department" ? "500" : "400")
+      .attr("pointer-events", "none");
 
-      d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(edges)
-          .id(d => d.id)
-          .distance(d => {
-            const src = nodeMap.get(d.source.id ?? d.source);
-            const tgt = nodeMap.get(d.target.id ?? d.target);
-            return (src?.type === "department" || tgt?.type === "department") ? 110 : 80;
-          })
-          .strength(0.6)
-        )
-        .force("charge", d3.forceManyBody()
-          .strength(d => d.type === "department" ? -400 : -180)
-        )
-        .force("collision", d3.forceCollide()
-          .radius(d => nodeRadius(d) + 14)
-        )
-        .force("clusterX", d3.forceX(d => clusterCentroids[d.cluster]?.x ?? 0).strength(0.18))
-        .force("clusterY", d3.forceY(d => clusterCentroids[d.cluster]?.y ?? 0).strength(0.18))
-        .force("centerX", d3.forceX(0).strength(0.03))
-        .force("centerY", d3.forceY(0).strength(0.03))
-        .stop()       
-        .tick(300);  
-
-      // Viewbox comes from node position
-      const pad = 60;
-      const minX = d3.min(nodes, d => d.x) - pad;
-      const minY = d3.min(nodes, d => d.y) - pad;
-      const maxX = d3.max(nodes, d => d.x) + pad;
-      const maxY = d3.max(nodes, d => d.y) + pad;
-      const vbW = maxX - minX;
-      const vbH = maxY - minY;
-
-      const svg = d3.select(svgEl)
-        .attr("viewBox", `${minX} ${minY} ${vbW} ${vbH}`)
-        .attr("preserveAspectRatio", "xMidYMid meet");
-
-      svgEl.style.aspectRatio = `${vbW} / ${vbH}`;
-
-      const g = svg.append("g");
-      const clusterLayer = g.append("g");
-      const edgeLayer = g.append("g");
-      const nodeLayer = g.append("g");
-      const labelLayer = g.append("g");
-
-      const clusters = [...new Set(nodes.filter(n => n.cluster).map(n => n.cluster))];
-
-      // Hulls
-      clusterLayer.selectAll("path.hull")
-        .data(clusters)
-        .join("path")
-        .attr("class", "hull")
-        .attr("d", name =>
-          hullPath(nodes.filter(n => n.cluster === name).map(n => [n.x, n.y]), 36) ?? ""
-        )
-        .attr("fill", "#F1EBE4")
-
-      // Cluster labels
-      clusterLayer.selectAll("text.cluster-name")
-        .data(clusters)
-        .join("text")
-        .attr("class", "cluster-name")
-        .text(d => d)
-        .attr("x", name => {
-          const pts = nodes.filter(n => n.cluster === name).map(n => n.x);
-          return d3.min(pts) - 4;
-        })
-        .attr("y", name => {
-          const pts = nodes.filter(n => n.cluster === name).map(n => n.y);
-          return d3.min(pts) - 44;
-        })
-        .attr("fill", "#555")
-        .attr("font-family", "'JetBrains Mono', monospace")
-        .attr("font-size", "8px")
-        .attr("font-weight", "300")
-        .attr("letter-spacing", "0.06em")
-        .attr("pointer-events", "none");
-
-      // Edges
-      edgeLayer.selectAll("line")
-        .data(edges)
-        .join("line")
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y)
-        .attr("stroke", d => edgeStyle[d.function]?.stroke ?? "#333")
-        .attr("stroke-width", d => edgeStyle[d.function]?.width ?? 1.5)
-        .attr("stroke-dasharray", d => edgeStyle[d.function]?.dasharray ?? null)
-        .attr("opacity", 0.85);
-
-      // Nodes
-      const nodeSel = nodeLayer.selectAll("g.node")
-        .data(nodes)
-        .join("g")
-        .attr("class", "node")
-        .attr("transform", d => `translate(${d.x},${d.y})`)
-        .style("cursor", "pointer")
-        .on("mouseover", showTooltip)
-        .on("mousemove", moveTooltip)
-        .on("mouseout", hideTooltip);
-
-      nodeSel.filter(d => d.type === "department")
-        .append("rect")
-        .attr("width", d => nodeRadius(d) * 1.8)
-        .attr("height", d => nodeRadius(d) * 1.8)
-        .attr("x", d => -nodeRadius(d) * 0.9)
-        .attr("y", d => -nodeRadius(d) * 0.9)
-        .attr("transform", "rotate(45)")
-        .attr("fill", nodeColour);
-
-      nodeSel.filter(d => d.type === "institution")
-        .append("circle")
-        .attr("r", nodeRadius)
-        .attr("fill", nodeColour);
-
-      // Abbreviation labels
-      labelLayer.selectAll("text")
-        .data(nodes)
-        .join("text")
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .text(d => d.abbr ?? d.name)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("fill", d => d.abbr === "UKGI" ? "#333" : "#fff")
-        .attr("font-family", "'JetBrains Mono', monospace")
-        .attr("font-size", d => d.type === "department" ? "10px" : "8px")
-        .attr("font-weight", d => d.type === "department" ? "500" : "400")
-        .attr("pointer-events", "none");
-    }
-
-    // Chart 1
-
-    const nodes1 = [
-      { id: "1", name: "Prime Minister's Office, 10 Downing Street", abbr: "N10", type: "institution", institutionType: "Executive body", cluster: "Political input and coordination", department: "Cabinet Office", legal: "Executive office" },
-      { id: "2", name: "Government Commercial Agency", abbr: "GCA", type: "institution", institutionType: "Procurement agency", cluster: "Procurement policy", department: "Cabinet Office", legal: "Executive agency" },
-      { id: "3", name: "UK Statistics Authority", abbr: "UKSA", type: "institution", institutionType: "Statistical authority", cluster: "Data gathering and intelligence", department: "Cabinet Office", legal: "Non-ministerial department" },
-      { id: "4", name: "National Security and Intelligence", abbr: "NSI", type: "institution", institutionType: "Intelligence service", cluster: "Data gathering and intelligence", department: "Cabinet Office", legal: "Unspecified" },
-      { id: "5", name: "Security Service", abbr: "MI5", type: "institution", institutionType: "Intelligence service", cluster: "Data gathering and intelligence", department: "Home Office", legal: "Unspecified" },
-      { id: "6", name: "Cabinet Office", abbr: "CO", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "7", name: "Home Office", abbr: "HO", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "8", name: "UK Government Investments", abbr: "UKGI", type: "institution", institutionType: "State holding agency", cluster: "Management of public assets", department: "HMT", legal: "Company wholly-owned" },
-      { id: "9", name: "The Crown Estate", abbr: "TCE", type: "institution", institutionType: "Publicly owned company", cluster: "Management of public assets", department: "HMT", legal: "Non-financial public corporation" },
-      { id: "10", name: "National Wealth Fund", abbr: "NWF", type: "institution", institutionType: "Publicly owned company", cluster: "Public financing", department: "HMT", legal: "Executive non-departmental public body" },
-      { id: "11", name: "British Business Bank", abbr: "BBB", type: "institution", institutionType: "Publicly owned company", cluster: "Public financing", department: "DBT", legal: "Company" },
-      { id: "13", name: "HM Treasury", abbr: "HMT", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "14", name: "Department for Business & Trade", abbr: "DBT", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "19", name: "National Security Strategic Investment Fund", abbr: "NSSIF", type: "institution", institutionType: "Publicly owned company", cluster: "Public financing", department: "DSIT", legal: "Owned by British Technology Investments Ltd" },
-      { id: "27", name: "Department for Science, Innovation and Technology", abbr: "DSIT", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "28", name: "Planning Inspectorate", abbr: "PI", type: "institution", institutionType: "Executive body", cluster: "Infrastructure development", department: "MHCLG", legal: "Executive agency" },
-      { id: "29", name: "HM Land Registry", abbr: "HMLR", type: "institution", institutionType: "Executive body", cluster: "Management of public assets", department: "MHCLG", legal: "Non-ministerial department" },
-      { id: "30", name: "Ministry of Housing, Communities and Local Government", abbr: "MHCLG", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "37", name: "National Infrastructure and Service Transformation Authority", abbr: "NISTA", type: "institution", institutionType: "Executive body", cluster: "Infrastructure development", department: "Joint departments", legal: "Executive agency" },
-      { id: "39", name: "Joint departments", abbr: "Joint", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-    ];
-
-    const edges1 = [
-      { source: "1", target: "6", function: "Executive" },
-      { source: "2", target: "6", function: "Executive" },
-      { source: "3", target: "6", function: "Executive" },
-      { source: "4", target: "6", function: "Executive" },
-      { source: "5", target: "7", function: "Executive" },
-      { source: "8", target: "13", function: "Advisory" },
-      { source: "9", target: "13", function: "Executive" },
-      { source: "10", target: "13", function: "Financing" },
-      { source: "11", target: "14", function: "Financing" },
-      { source: "19", target: "27", function: "Financing" },
-      { source: "28", target: "30", function: "Executive" },
-      { source: "29", target: "30", function: "Executive" },
-      { source: "37", target: "39", function: "Executive" },
-    ];
-
-    const centroids1 = {
-      "Political input and coordination": { x: -300, y: -200 },
-      "Procurement policy": { x: 80, y: -200 },
-      "Data gathering and intelligence": { x: 200, y: -40 },
-      "Management of public assets": { x: 200, y: 120 },
-      "Public financing": { x: -200, y: 180 },
-      "Infrastructure development": { x: -220, y: 0 },
-    };
-
-    // Chart 2
-
-    const nodes2 = [
-      { id: "12", name: "Board of Trade", abbr: "BOT", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DBT", legal: "Unspecified" },
-      { id: "14", name: "Department for Business & Trade", abbr: "DBT", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "15", name: "Competition and Markets Authority", abbr: "CMA", type: "institution", institutionType: "Regulatory body", cluster: "Competition policy", department: "DBT", legal: "Non-ministerial department" },
-      { id: "16", name: "Subsidy Advice Unit", abbr: "SAU", type: "institution", institutionType: "Advisory body", cluster: "Competition policy", department: "DBT", legal: "Unit of a non-ministerial department" },
-      { id: "17", name: "Competition Appeal Tribunal", abbr: "CAT", type: "institution", institutionType: "Judicial body", cluster: "Competition policy", department: "DBT", legal: "Tribunal" },
-      { id: "18", name: "Competition Service", abbr: "CS", type: "institution", institutionType: "Advisory body", cluster: "Competition policy", department: "DBT", legal: "Executive non-departmental public body" },
-      { id: "20", name: "Intellectual Property Office", abbr: "IPO", type: "institution", institutionType: "Regulatory body", cluster: "Technology transfer", department: "DSIT", legal: "Office of department" },
-      { id: "21", name: "Regulatory Innovation Office", abbr: "RIO", type: "institution", institutionType: "Regulatory body", cluster: "Technology transfer", department: "DSIT", legal: "Non-ministerial department" },
-      { id: "22", name: "Government Office for Technology Transfer", abbr: "GOTT", type: "institution", institutionType: "Executive body", cluster: "Technology transfer", department: "DSIT", legal: "Non-ministerial department" },
-      { id: "23", name: "UK Research and Innovation", abbr: "UKRI", type: "institution", institutionType: "Executive body", cluster: "R&D funding and infrastructure", department: "DSIT", legal: "Executive non-departmental public body" },
-      { id: "24", name: "Advanced Research and Invention Agency", abbr: "ARIA", type: "institution", institutionType: "Executive body", cluster: "R&D funding and infrastructure", department: "DSIT", legal: "Executive non-departmental public body" },
-      { id: "25", name: "Met Office", abbr: "MO", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DSIT", legal: "Executive agency" },
-      { id: "26", name: "Government Office for Science", abbr: "GOS", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DSIT", legal: "Non-ministerial department" },
-      { id: "27", name: "Department for Science, Innovation and Technology", abbr: "DSIT", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "31", name: "Committee on Climate Change", abbr: "CCC", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "DESNZ", legal: "Executive non-departmental public body" },
-      { id: "32", name: "Skills England", abbr: "SE", type: "institution", institutionType: "Executive body", cluster: "Workforce development", department: "DWP", legal: "Executive agency" },
-      { id: "33", name: "Department for Energy Security and Net Zero", abbr: "DESNZ", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "34", name: "Department for Work and Pensions", abbr: "DWP", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "35", name: "Office for Investment", abbr: "OfI", type: "institution", institutionType: "Advisory body", cluster: "Industry competitiveness", department: "Joint departments", legal: "Office of department" },
-      { id: "36", name: "Industrial Strategy Advisory Council", abbr: "ISAC", type: "institution", institutionType: "Advisory body", cluster: "Industry competitiveness", department: "Joint departments", legal: "Expert committee" },
-      { id: "38", name: "Evaluation Task Force", abbr: "ETF", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "Joint departments", legal: "Non-ministerial department" },
-      { id: "39", name: "Joint departments", abbr: "Joint", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-      { id: "40", name: "Government Economic Service", abbr: "GES", type: "institution", institutionType: "Advisory body", cluster: "Analytical support to government", department: "Civil Service", legal: "Unspecified" },
-      { id: "41", name: "Open Innovation Team", abbr: "OIT", type: "institution", institutionType: "Advisory body", cluster: "Workforce development", department: "Civil Service", legal: "Cross-government unit" },
-      { id: "42", name: "Government Analysis Function", abbr: "GAF", type: "institution", institutionType: "Advisory body", cluster: "Workforce development", department: "Civil Service", legal: "Unspecified" },
-      { id: "43", name: "Civil Service", abbr: "CS", type: "department", institutionType: null, cluster: null, department: null, legal: null },
-    ];
-
-    const edges2 = [
-      { source: "12", target: "14", function: "Advisory" },
-      { source: "15", target: "14", function: "Regulatory" },
-      { source: "16", target: "14", function: "Advisory" },
-      { source: "17", target: "14", function: "Judicial" },
-      { source: "18", target: "14", function: "Advisory" },
-      { source: "20", target: "27", function: "Regulatory" },
-      { source: "21", target: "27", function: "Regulatory" },
-      { source: "22", target: "27", function: "Executive" },
-      { source: "23", target: "27", function: "Executive" },
-      { source: "24", target: "27", function: "Executive" },
-      { source: "25", target: "27", function: "Advisory" },
-      { source: "26", target: "27", function: "Advisory" },
-      { source: "31", target: "33", function: "Advisory" },
-      { source: "32", target: "34", function: "Executive" },
-      { source: "35", target: "39", function: "Advisory" },
-      { source: "36", target: "39", function: "Advisory" },
-      { source: "38", target: "39", function: "Advisory" },
-      { source: "40", target: "43", function: "Advisory" },
-      { source: "41", target: "43", function: "Advisory" },
-      { source: "42", target: "43", function: "Advisory" },
-    ];
-
-    const centroids2 = {
-      "Competition policy": { x: 200, y: -200 },
-      "Technology transfer": { x: 20, y: -200 },
-      "R&D funding and infrastructure": { x: -200, y: -100 },
-      "Analytical support to government": { x: -180, y: 200 },
-      "Industry competitiveness": { x: 180, y: 0 },
-      "Workforce development": { x: 200, y: 200 },
-    };
-
-    // Build both charts 
-
-    buildChart(document.getElementById("svg1"), nodes1, edges1, centroids1);
-    buildChart(document.getElementById("svg2"), nodes2, edges2, centroids2);
-
-    // Shared legend 
+    // Legend 
 
     (function drawLegend() {
       const el = document.getElementById("legend");
-
       const section = (title, rows) =>
         `<div style="margin-bottom:10px;flex:0 0 auto">
-          <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
-          ${rows.join("")}
-        </div>`;
-
+        <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
+        ${rows.join("")}
+      </div>`;
       const circleRow = (color, label) =>
         `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-          <svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${color}"/></svg>
-          <span>${label}</span>
-        </div>`;
-
+        <svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${color}"/></svg>
+        <span>${label}</span>
+      </div>`;
       const diamondRow = (color, label) =>
         `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-          <svg width="14" height="14"><rect x="3" y="3" width="8" height="8" transform="rotate(45,7,7)" fill="${color}"/></svg>
-          <span>${label}</span>
-        </div>`;
-
+        <svg width="14" height="14"><rect x="3" y="3" width="8" height="8" transform="rotate(45,7,7)" fill="${color}"/></svg>
+        <span>${label}</span>
+      </div>`;
       const edgeRow = (dasharray, label) =>
         `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-          <svg width="20" height="14"><line x1="0" y1="7" x2="20" y2="7" stroke="#333" stroke-width="1.5" ${dasharray ? `stroke-dasharray="${dasharray}"` : ""}></line></svg>
-          <span>${label}</span>
-        </div>`;
-
+        <svg width="20" height="14"><line x1="0" y1="7" x2="20" y2="7" stroke="#333" stroke-width="2" ${dasharray ? `stroke-dasharray="${dasharray}"` : ""}></line></svg>
+        <span>${label}</span>
+      </div>`;
       el.innerHTML = [
         section("Node type", [
           diamondRow("#333", "Government department"),
