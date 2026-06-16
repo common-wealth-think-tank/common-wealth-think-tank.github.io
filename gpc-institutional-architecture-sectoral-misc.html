@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <title>GPC Institutional Architecture — Sectoral Level (Misc)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    html,
+    body {
+      overflow: hidden;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: auto;
+      padding: 24px;
+    }
+
+    #chart {
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 1 / 1;
+      align-self: flex-start;
+    }
+
+    #legend {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      line-height: 1.6;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: #fff;
+      border: 1px solid #333;
+      padding: 8px;
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      max-width: 200px;
+      line-height: 1.4;
+    }
+
+    .tooltip strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .tt-row,
+    .tt-name {
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <div id="chart"></div>
+    <div id="legend"></div>
+  </div>
+  <div class="tooltip" id="tooltip"></div>
+  <script>
+
+    // Data
+
+    const nodes = [
+      { id: "1", name: "Rural Payments Agency", abbr: "RPA", type: "institution", institutionType: "Executive body", cluster: "Agriculture", department: "DEFRA", legal: "Executive agency", },
+      { id: "2", name: "Agriculture and Horticulture Development Board", abbr: "AHDB", type: "institution", institutionType: "Advisory body", cluster: "Agriculture", department: "DEFRA", legal: "Executive non-departmental public body" },
+      { id: "3", name: "Environmental Agency", abbr: "EA", type: "institution", institutionType: "Regulatory body", cluster: "Waste", department: "DEFRA", legal: "Executive non-departmental public body" },
+      { id: "4", name: "Environmental Agency", abbr: "EA", type: "institution", institutionType: "Regulatory body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Executive non-departmental public body" },
+      { id: "5", name: "Office for Environmental Protection", abbr: "OEP", type: "institution", institutionType: "Regulatory body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Executive non-departmental public body" },
+      { id: "6", name: "Natural England", abbr: "NE", type: "institution", institutionType: "Executive body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Executive non-departmental public body" },
+      { id: "7", name: "Forestry Commission", abbr: "FC", type: "institution", institutionType: "Executive body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Non-ministerial department" },
+      { id: "8", name: "Forestry England", abbr: "FE", type: "institution", institutionType: "Executive body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Executive agency" },
+      { id: "9", name: "Forest Research", abbr: "FR", type: "institution", institutionType: "Advisory body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Executive agency" },
+      { id: "10", name: "National Forest Company", abbr: "NFC", type: "institution", institutionType: "Publicly owned company", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Non-profit arm's length body" },
+      { id: "11", name: "National Park Authorities", abbr: "NPA", type: "institution", institutionType: "Executive body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Unspecified" },
+      { id: "12", name: "Plan Varieties and Seeds Tribunal", abbr: "PVST", type: "institution", institutionType: "Judicial body", cluster: "Forestry and woodlands", department: "DEFRA", legal: "Unspecified" },
+      { id: "13", name: "Department for Environment Food and Rural Affairs", abbr: "DEFRA", type: "department", institutionType: null, cluster: null, department: null, legal: null },
+      { id: "14", name: "Defence Equipment and Support", abbr: "DE&S", type: "institution", institutionType: "Procurement agency", cluster: "Industry", department: "MoD", legal: "Executive agency" },
+      { id: "15", name: "Sheffield Forgemasters International Ltd", abbr: "SF", type: "institution", institutionType: "Publicly owned company", cluster: "Industry", department: "MoD", legal: "Public corporation" },
+      { id: "16", name: "Ministry of Defence", abbr: "MoD", type: "department", institutionType: null, cluster: null, department: null, legal: null },
+      { id: "17", name: "Engineering Construction Industry Training Board", abbr: "ECITB", type: "institution", institutionType: "Advisory body", cluster: "Various", department: "DWP", legal: "Executive non-departmental public body" },
+      { id: "18", name: "Department for Work and Pensions", abbr: "DWP", type: "department", institutionType: null, cluster: null, department: null, legal: null },
+      { id: "19", name: "UK Agri-Tech Catapult", abbr: "UKATC", type: "institution", institutionType: "Publicly owned company", cluster: "Agriculture", department: "DSIT", legal: "Private company limited by guarantees" },
+      { id: "20", name: "Department for Science, Innovation and Technology", abbr: "DSIT", type: "department", institutionType: null, cluster: null, department: null, legal: null }
+    ];
+
+    const edges = [
+      { source: "1", target: "13", function: "Executive" },
+      { source: "2", target: "13", function: "Advisory" },
+      { source: "3", target: "13", function: "Regulatory" },
+      { source: "4", target: "13", function: "Regulatory" },
+      { source: "5", target: "13", function: "Regulatory" },
+      { source: "6", target: "13", function: "Executive" },
+      { source: "7", target: "13", function: "Advisory" },
+      { source: "8", target: "13", function: "Executive" },
+      { source: "9", target: "13", function: "Advisory" },
+      { source: "10", target: "13", function: "Executive" },
+      { source: "11", target: "13", function: "Executive" },
+      { source: "12", target: "13", function: "Judicial" },
+      { source: "14", target: "16", function: "Executive" },
+      { source: "15", target: "16", function: "Executive" },
+      { source: "17", target: "18", function: "Advisory" },
+      { source: "19", target: "20", function: "Executive" },
+    ];
+
+    // Visual mapping
+
+    const institutionTypes = [
+      { label: "Advisory body", color: "#00C0A3" },
+      { label: "Publicly owned company", color: "#6F7D34" },
+      { label: "Executive body", color: "#FFA69E" },
+      { label: "Regulatory body", color: "#453643" },
+      { label: "Judicial body", color: "#A0ECD0" },
+      { label: "Procurement agency", color: "#0C425B" },
+    ];
+
+    const institutionTypeColour = Object.fromEntries(institutionTypes.map(d => [d.label, d.color]));
+
+    const edgeStyle = ({
+      "Advisory": { stroke: "#333", dasharray: "5,3", width: 1.5 },
+      "Executive": { stroke: "#333", dasharray: "1.5,3", width: 1.5 },
+      "Regulatory": { stroke: "#333", dasharray: "8,6,2,6", width: 2 },
+      "Judicial": { stroke: "#333", dasharray: "12,6", width: 2 },
+    });
+
+    const edgeTypes = Object.entries(edgeStyle).map(([label, s]) => ({ label, dasharray: s.dasharray }));
+
+    const clusterCentroid = {
+      "Agriculture": { x: -180, y: 80 },
+      "Waste": { x: 0, y: 180 },
+      "Forestry and woodlands": { x: 280, y: 80 },
+      "Industry": { x: -180, y: -180 },
+      "Various": { x: 180, y: -180 },
+    };
+
+    const clusterStyle = ({
+      "Agriculture": { fill: "#F1EBE4" },
+      "Waste": { fill: "#F1EBE4" },
+      "Forestry and woodlands": { fill: "#F1EBE4" },
+      "Industry": { fill: "#F1EBE4" },
+      "Various": { fill: "#F1EBE4" },
+    });
+
+    function nodeRadius(d) {
+      return d.type === "department" ? 28 : 14;
+    };
+
+    function nodeColour(d) {
+      if (d.type === "department") return "#333";
+      return institutionTypeColour[d.institutionType] || "#7a8399";
+    };
+
+    const expandHull = (points, padding) => {
+      const hull = d3.polygonHull(points);
+      if (!hull) return null;
+      const cx = d3.mean(hull, p => p[0]);
+      const cy = d3.mean(hull, p => p[1]);
+      const expanded = hull.map(p => {
+        const dx = p[0] - cx, dy = p[1] - cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        return [p[0] + dx / len * padding, p[1] + dy / len * padding];
+      });
+      return "M" + expanded.map(p => p.join(",")).join("L") + "Z";
+    };
+
+    function hullPath(points, padding) {
+      if (points.length === 0) return null;
+      if (points.length === 1) {
+        const [x, y] = points[0];
+        const r = padding * 0.5;
+        const synthetic = [0, 1, 2, 3].map(i => {
+          const angle = (i / 4) * 2 * Math.PI;
+          return [x + r * Math.cos(angle), y + r * Math.sin(angle)];
+        });
+        return expandHull(synthetic, padding);
+      }
+      if (points.length === 2) {
+        const dx = points[1][0] - points[0][0];
+        const dy = points[1][1] - points[0][1];
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const ux = -dy / len * padding, uy = dx / len * padding;
+        return `M${points[0][0] + ux},${points[0][1] + uy}
+            L${points[1][0] + ux},${points[1][1] + uy}
+            L${points[1][0] - ux},${points[1][1] - uy}
+            L${points[0][0] - ux},${points[0][1] - uy}Z`;
+      }
+      const hull = d3.polygonHull(points);
+      if (!hull) return null;
+      const cx = d3.mean(hull, p => p[0]);
+      const cy = d3.mean(hull, p => p[1]);
+      const expanded = hull.map(p => {
+        const dx = p[0] - cx, dy = p[1] - cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        return [p[0] + dx / len * padding, p[1] + dy / len * padding];
+      });
+      return "M" + expanded.map(p => p.join(",")).join("L") + "Z";
+    }
+
+    // Chart
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("viewBox", "0 0 600 600")
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("width", "100%")
+      .style("height", "100%");
+    const tooltip = document.getElementById("tooltip");
+
+    let width, height;
+
+    function getDims() {
+      const rect = svg.node().getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+    }
+
+    getDims();
+
+    const g = svg.append("g");
+
+    // Layers (order matters for z-depth)
+    const clusterLayer = g.append("g").attr("class", "clusters");
+    const edgeLayer = g.append("g").attr("class", "edges");
+    const nodeLayer = g.append("g").attr("class", "nodes");
+    const nameLayer = g.append("g").attr("class", "names");
+
+    // Force simulation
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+    // Run simulation synchronously
+    d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(edges)
+        .id(d => d.id)
+        .distance(d => {
+          const src = nodeMap.get(d.source.id || d.source);
+          const tgt = nodeMap.get(d.target.id || d.target);
+          if (src?.type === "department" || tgt?.type === "department") return 110;
+          return 80;
+        })
+        .strength(0.6)
+      )
+      .force("charge", d3.forceManyBody().strength(d => d.type === "department" ? -400 : -180))
+      .force("collision", d3.forceCollide().radius(d => nodeRadius(d) + 14))
+      .force("clusterX", d3.forceX(d => {
+        if (d.cluster && clusterCentroid[d.cluster]) return clusterCentroid[d.cluster].x;
+        return 0;
+      }).strength(0.18))
+      .force("clusterY", d3.forceY(d => {
+        if (d.cluster && clusterCentroid[d.cluster]) return clusterCentroid[d.cluster].y;
+        return 0;
+      }).strength(0.18))
+      .force("centerX", d3.forceX(0).strength(0.03))
+      .force("centerY", d3.forceY(0).strength(0.03))
+      .stop()
+      .tick(300);
+
+    // Compute viewBox once from settled positions
+    const pad = 60;
+    const minX = d3.min(nodes, d => d.x) - pad;
+    const minY = d3.min(nodes, d => d.y) - pad;
+    const maxX = d3.max(nodes, d => d.x) + pad;
+    const maxY = d3.max(nodes, d => d.y) + pad;
+    const vbW = maxX - minX;
+    const vbH = maxY - minY;
+    svg.attr("viewBox", `${minX} ${minY} ${vbW} ${vbH}`);
+    document.getElementById("chart").style.aspectRatio = `1 / ${vbH / vbW}`;
+
+    // Draw everything once from final positions
+
+    // Edges
+    edgeLayer.selectAll("line")
+      .data(edges)
+      .join("line")
+      .attr("stroke", d => edgeStyle[d.function]?.stroke || "#333")
+      .attr("stroke-width", d => edgeStyle[d.function]?.width || 1.5)
+      .attr("stroke-dasharray", d => edgeStyle[d.function]?.dasharray || null)
+      .attr("opacity", 1)
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    // Nodes
+    const nodeSel = nodeLayer.selectAll("g.node")
+      .data(nodes)
+      .join("g")
+      .attr("class", "node")
+      .attr("transform", d => `translate(${d.x},${d.y})`)
+      .style("cursor", "pointer")
+      .on("mouseover", (event, d) => {
+        tooltip.style.opacity = "1";
+        const lines = d.type === "department"
+          ? `<strong>${d.name}</strong><div class="tt-row"><span class="tt-name">Type: </span> Government department</div>`
+          : `<strong>${d.name}</strong>
+         <div class="tt-row"><span class="tt-name">Type:</span> ${d.institutionType}</div>
+          <div class="tt-row"><span class="tt-name">Legal status:</span> ${d.legal}</div>`;
+        tooltip.innerHTML = lines;
+      })
+      .on("mousemove", event => {
+        tooltip.style.left = (event.pageX + 14) + "px";
+        tooltip.style.top = (event.pageY - 10) + "px";
+      })
+      .on("mouseout", () => { tooltip.style.opacity = "0"; });
+
+    // Department nodes → diamond shape
+    nodeSel.filter(d => d.type === "department")
+      .append("rect")
+      .attr("width", d => nodeRadius(d) * 1.8)
+      .attr("height", d => nodeRadius(d) * 1.8)
+      .attr("x", d => -nodeRadius(d) * 0.9)
+      .attr("y", d => -nodeRadius(d) * 0.9)
+      .attr("transform", "rotate(45)")
+      .attr("fill", d => nodeColour(d))
+      .attr("fill-opacity", 1);
+
+    // Institution nodes → circle
+    nodeSel.filter(d => d.type === "institution")
+      .append("circle")
+      .attr("r", d => nodeRadius(d))
+      .attr("fill", d => nodeColour(d))
+      .attr("fill-opacity", 1);
+
+    // Names
+    nameLayer.selectAll("text")
+      .data(nodes)
+      .join("text")
+      .text(d => d.abbr || d.name)
+      .attr("x", d => d.x)
+      .attr("y", d => d.y)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("fill", "#fff")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("font-size", d => d.type === "department" ? "10px" : "8px")
+      .attr("font-weight", d => d.type === "department" ? "500" : "400")
+      .attr("pointer-events", "none");
+
+    // Clusters
+    const clusters = [...new Set(nodes.filter(n => n.cluster).map(n => n.cluster))];
+
+    // Hulls
+    clusterLayer.selectAll("path.cluster-hull")
+      .data(clusters)
+      .join("path")
+      .attr("class", "cluster-hull")
+      .attr("fill", d => clusterStyle[d]?.fill || "rgba(255,255,255,0.04)")
+      .attr("stroke-width", 1.5)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-dasharray", "4,3")
+      .attr("d", clusterName => {
+        const pts = nodes.filter(n => n.cluster === clusterName).map(n => [n.x, n.y]);
+        return hullPath(pts, 36) || "";
+      });
+
+    // Cluster labels
+    clusterLayer.selectAll("text.cluster-name")
+      .data(clusters)
+      .join("text")
+      .attr("class", "cluster-name")
+      .text(d => d)
+      .attr("fill", d => clusterStyle[d]?.stroke || "#333")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("font-size", "8px")
+      .attr("font-weight", "300")
+      .attr("letter-spacing", "0.06em")
+      .attr("pointer-events", "none")
+      .attr("opacity", 1)
+      .each(function (clusterName) {
+        const pts = nodes.filter(n => n.cluster === clusterName).map(n => [n.x, n.y]);
+        if (!pts.length) return;
+        const x = d3.min(pts, p => p[0]);
+        const y = d3.min(pts, p => p[1]);
+        d3.select(this).attr("x", x - 40).attr("y", y - 40);
+      });
+
+
+    // Legend
+    function drawLegend() {
+      const el = document.getElementById("legend");
+
+      function section(title, rows) {
+        return `<div style="margin-bottom:10px;flex:0 0 auto">
+    <div style="font-size:8px;font-weight:500;letter-spacing:0.1em;color:#777;margin-bottom:4px">${title.toUpperCase()}</div>
+    ${rows.join("")}
+  </div>`;
+      }
+
+      function circleRow(color, label) {
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${color}"/></svg>
+      <span>${label}</span>
+    </div>`;
+      }
+
+      function diamondRow(color, label) {
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg width="14" height="14"><rect x="3" y="3" width="8" height="8" transform="rotate(45,7,7)" fill="${color}"/></svg>
+      <span>${label}</span>
+    </div>`;
+      }
+
+      function edgeRow(dasharray, label) {
+        const dash = dasharray ? `stroke-dasharray="${dasharray}"` : "";
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <svg width="28" height="14"><line x1="0" y1="7" x2="28" y2="7" stroke="#333" stroke-width="1.5" ${dash}/></svg>
+      <span>${label}</span>
+    </div>`;
+      }
+
+      el.innerHTML = [
+        section("Node type", [
+          diamondRow("#333", "Government department"),
+          circleRow("#333", "Institution"),
+        ]),
+        section("Institution type", institutionTypes.map(d => circleRow(d.color, d.label))),
+        section("Function", edgeTypes.map(d => edgeRow(d.dasharray, d.label))),
+      ].join("");
+    }
+
+    drawLegend();
+
+    window.addEventListener('wheel', (e) => {
+      window.parent.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      const dy = touchStartY - e.touches[0].clientY;
+      window.parent.scrollBy({ top: dy, behavior: 'auto' });
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+  </script>
+
+</body>
+
+</html>
