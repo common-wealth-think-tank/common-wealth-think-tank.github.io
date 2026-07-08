@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Scroll container  */
+    #tl-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #f5f5f5;
+    }
+
+    #tl-wrap::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tl-date {
+      font-family: 'JetBrains Mono';
+      font-size: 10px;
+      fill: #333333;
+      text-transform: uppercase;
+    }
+
+    .tl-event {
+      font-family: 'Neue Haas Unica W1G';
+      font-size: 12px;
+      fill: #333333;
+    }
+
+    .tl-axis-label {
+      font-family: 'Neue Haas Unica W1G';
+      font-size: 12px;
+      fill: #333333;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="tl-wrap">
+    <svg id="tl-svg"></svg>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+
+    // Data
+
+    const DATA = [
+      { dateLabel: '2015', date: '2017-01-01', label: 'Reynobond PE sold by Arconic for use in Grenfell Tower', category: 'corporate' },
+      { dateLabel: '2013-2017', date: '2017-01-01', label: 'Pre-fire warnings from Grenfell Action Group', category: 'grenfell' },
+      { dateLabel: '14 June 2017', date: '2017-06-14', label: 'Grenfell Tower fire', category: 'anniversary' },
+      { dateLabel: '14 June 2017', date: '2017-06-14', label: 'Grenfell Inquiry ordered', category: 'grenfell' },
+      { dateLabel: '11 August 2017', date: '2017-08-11', label: 'Arconic shareholders sue Western District of Pennsylvania (Howard v Arconic)', category: 'litigation' },
+      { dateLabel: 'May 2018', date: '2018-05-01', label: 'Government pledge £400mn in the Social Sector ACM Cladding Remediation Fund', category: 'remediation' },
+      { dateLabel: '14 June 2018', date: '2018-06-14', label: 'First anniversary', category: 'anniversary' },
+      { dateLabel: 'May 2019', date: '2019-05-01', label: 'Government announce additional £200mn in Private Sector ACM Cladding Remediation Fund', category: 'remediation', labelSide: 'below' },
+      { dateLabel: 'June 2019', date: '2019-06-01', label: 'Chief Judge Hornak grants motion to dismiss (Howard v Arconic)', category: 'litigation' },
+      { dateLabel: '14 June 2019', date: '2019-06-14', label: 'Second anniversary', category: 'anniversary' },
+      { dateLabel: '19 June 2019', date: '2019-06-19', label: 'Behrens v Arconic case filed in District Court of Pennsylvania (Behrens v Arconic)', category: 'litigation', labelSide: 'below' },
+      { dateLabel: '30 October 2019', date: '2019-10-30', label: 'Inquiry Phase 1 published', category: 'grenfell' },
+      { dateLabel: '2020', date: '2020-01-01', label: 'Arconic splits into Arconic and Howmet Aerospace', category: 'corporate' },
+      { dateLabel: 'March 2020', date: '2020-03-01', label: 'Claims first filed in Abdel-Kader litigation (Abdel-Kader)', category: 'litigation' },
+      { dateLabel: '14 June 2020', date: '2020-06-14', label: 'Third anniversary', category: 'anniversary' },
+      { dateLabel: '6 August 2020', date: '2020-08-06', label: 'Arconic produces document of insurance policies (Behrens v Arconic)', category: 'litigation' },
+      { dateLabel: '16 September 2020', date: '2020-09-16', label: 'Arconic produces document of insurance policies (Behrens v Arconic)', category: 'litigation', labelSide: 'below' },
+      { dateLabel: '14 June 2021', date: '2021-06-14', label: 'Fourth anniversary', category: 'anniversary' },
+      { dateLabel: '24 June 2021', date: '2021-06-24', label: 'Howard judgement in favour of plaintiffs (Howard v Arconic)', category: 'litigation' },
+      { dateLabel: '14 June 2022', date: '2022-06-14', label: 'Fifth anniversary', category: 'anniversary' },
+      { dateLabel: '8 July 2022', date: '2022-07-08', label: 'Behrens appeal judgement (Behrens v Arconic)', category: 'litigation' },
+      { dateLabel: 'May 2023', date: '2023-05-01', label: 'Civil settlement agreed (Abdel-Kader)', category: 'litigation' },
+      { dateLabel: '14 June 2023', date: '2023-06-14', label: 'Sixth anniversary', category: 'anniversary' },
+      { dateLabel: '18 August 2023', date: '2023-08-18', label: 'Apollo completes acquisition of Arconic', category: 'corporate' },
+      { dateLabel: '14 June 2024', date: '2024-06-14', label: 'Seventh anniversary', category: 'anniversary' },
+      { dateLabel: '4 September 2024', date: '2024-09-04', label: 'Inquiry Phase 2 published', category: 'grenfell' },
+      { dateLabel: '26 February 2025', date: '2025-02-26', label: 'Government accepts Inquiry findings in full', category: 'grenfell' },
+      { dateLabel: '14 June 2025', date: '2025-06-14', label: 'Eighth anniversary', category: 'anniversary' },
+      { dateLabel: '13 May 2026', date: '2026-05-13', label: "King's Speech introduces Remediation Bill", category: 'remediation' },
+      { dateLabel: '19 May 2026', date: '2026-05-19', label: 'Metropolitan Police announce handover to CPS', category: 'grenfell' },
+      { dateLabel: '14 June 2026', date: '2026-06-14', label: 'Ninth anniversary', category: 'anniversary' },
+    ];
+
+
+    // Colours
+
+    const C = {
+      anniversary: "#0C425B",
+      corporate: '#9ca4fc',
+      grenfell: '#00C0A3',
+      remediation: '#A0ECD0',
+      litigation: '#777777',
+      axis: '#333333',
+      gridline: '#d3d3d3',
+      eventText: '#333333',
+    };
+
+
+    // Dimensions
+
+    const HEIGHT = 640;
+    const MARGIN = { top: 16, right: 40, bottom: 16, left: 40 };
+    const PX_PER_YEAR = 420;
+    const LAYER_GAP = 110;
+    const DOT_R = 8;
+    const LABEL_OFFSET_X = -4;
+    const LABEL_OFFSET_Y = 24;
+    const FS = { event: 12, axis: 12, layer: 12 };
+    const PATH_OPACITY = 1;
+    const CONNECTOR_LENGTH = 8;
+    const LABEL_MAX_WIDTH = 200;
+    const LINE_HEIGHT = FS.event * 1.4;
+    const LABEL_FONT = `${FS.event}px Neue Haas Unica W1G`;
+    const AXIS_TICK = 16;
+
+    // Layers
+
+    const centerY = HEIGHT / 2;
+
+    const LAYERS = [
+      { id: 'corporate', color: C.corporate, axisLine: false },
+      { id: 'grenfell', color: C.grenfell, axisLine: false },
+      { id: 'anniversary', color: C.anniversary, axisLine: true },
+      { id: 'litigation', color: C.litigation, axisLine: false },
+      { id: 'remediation', color: C.remediation, axisLine: false },
+    ];
+
+    // Vertical order of each layer
+    const Y_OFFSETS = [-2, -1, 0, 1, 2];
+    LAYERS.forEach((l, i) => l.y = centerY + Y_OFFSETS[i] * LAYER_GAP);
+
+
+    // Timeline date range
+    const T0 = new Date('2017-01-01');
+    const T1 = new Date('2027-01-01');
+
+    const innerW = Math.round((T1 - T0) / (365.25 * 864e5) * PX_PER_YEAR);
+    const totalW = innerW + MARGIN.left + MARGIN.right;
+
+    const x = d3.scaleTime().domain([T0, T1]).range([MARGIN.left, MARGIN.left + innerW]);
+
+    DATA.forEach(d => d._date = new Date(d.date));
+
+    // Text-wrapping helper
+    function wrapText(text, maxWidth, font) {
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = font;
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      words.forEach(word => {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+      return lines;
+    }
+
+
+    // Render
+
+    const svg = d3.select('#tl-svg')
+      .attr('width', totalW)
+      .attr('height', HEIGHT)
+      .style('display', 'block');
+
+    // Anniversary gridlines
+    const years = d3.timeYear.range(T0, T1).map(d => {
+      d.setMonth(5);
+      d.setDate(14);
+      return d;
+    });
+    svg.append('g')
+      .selectAll('line').data(years).join('line')
+      .attr('x1', d => x(d)).attr('x2', d => x(d))
+      .attr('y1', MARGIN.top).attr('y2', HEIGHT - MARGIN.bottom)
+      .attr('stroke', C.gridline).attr('stroke-width', 1);
+
+    // Layers
+    LAYERS.forEach(layer => {
+      const evts = DATA
+        .filter(d => d.category === layer.id)
+        .sort((a, b) => a._date - b._date);
+
+      if (!evts.length) return;
+
+      const g = svg.append('g');
+
+      // Draw anniversary axis and ticks
+      if (layer.axisLine) {
+        g.append('line')
+          .attr('x1', MARGIN.left)
+          .attr('x2', MARGIN.left + innerW)
+          .attr('y1', layer.y).attr('y2', layer.y)
+          .attr('stroke', layer.color)
+          .attr('stroke-width', 1.5)
+          .attr('opacity', PATH_OPACITY);
+        [MARGIN.left, MARGIN.left + innerW].forEach(tx => {
+          g.append('line')
+            .attr('x1', tx).attr('x2', tx)
+            .attr('y1', layer.y - AXIS_TICK)
+            .attr('y2', layer.y + AXIS_TICK)
+            .attr('stroke', layer.color)
+            .attr('stroke-width', 1.5);
+        });
+      }
+      // Keep connector line on other layers?
+      // else {
+      //   g.append('line')
+      //     .attr('x1', x(evts[0]._date))
+      //     .attr('x2', x(evts[evts.length - 1]._date))
+      //     .attr('y1', layer.y).attr('y2', layer.y)
+      //     .attr('stroke', layer.color)
+      //     .attr('stroke-width', 1.5)
+      //     .attr('opacity', PATH_OPACITY);
+      // }
+
+      // Dots
+      g.selectAll('circle').data(evts).join('circle')
+        .attr('cx', d => x(d._date))
+        .attr('cy', layer.y)
+        .attr('r', DOT_R)
+        .attr('fill', layer.color);
+
+      // Label connectors
+      g.selectAll('line.connector').data(evts).join('line')
+        .attr('x1', d => x(d._date))
+        .attr('x2', d => x(d._date))
+        .attr('y1', d => {
+          const dir = d.labelSide === 'below' ? 1 : -1;
+          return layer.y + dir * DOT_R;
+        })
+        .attr('y2', d => {
+          const dir = d.labelSide === 'below' ? 1 : -1;
+          return layer.y + dir * (DOT_R + CONNECTOR_LENGTH);
+        })
+        .attr('stroke', layer.color)
+        .attr('stroke-width', 1.5);
+
+      // Labels
+      evts.forEach(d => {
+        d._lines = wrapText(d.label, LABEL_MAX_WIDTH, LABEL_FONT);
+      });
+      g.selectAll('text').data(evts).join('text')
+        .attr('transform', d => {
+          const dir = d.labelSide === 'below' ? 1 : -1;
+          const capHeight = FS.event * 0.72;
+          const extraLines = d._lines.length - 1;
+          const ty = dir === -1
+            ? layer.y - (DOT_R + CONNECTOR_LENGTH + LABEL_OFFSET_Y) - (extraLines * LINE_HEIGHT)
+            : layer.y + (DOT_R + CONNECTOR_LENGTH + LABEL_OFFSET_Y) - capHeight;
+          return `translate(${x(d._date) - DOT_R}, ${ty})`;
+        })
+        .attr('text-anchor', 'start')
+        .each(function (d) {
+          const el = d3.select(this);
+          el.append('tspan')
+            .attr('x', 0).attr('dy', 0)
+            .attr('class', 'tl-date')
+            .text(d.dateLabel);
+          d._lines.forEach(line => {
+            el.append('tspan')
+              .attr('x', 0).attr('dy', `${LINE_HEIGHT}px`)
+              .attr('class', 'tl-event')
+              .text(line);
+          });
+        });
+    });
+
+  </script>
+</body>
+
+</html>
