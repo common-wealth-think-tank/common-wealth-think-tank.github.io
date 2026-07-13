@@ -6,7 +6,7 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
     @import url("https://use.typekit.net/fxp0wzs.css");
-    
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -19,6 +19,8 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       background: #f5f5f5;
+      scroll-behavior: smooth;
+      position: relative;
     }
 
     #tl-wrap::-webkit-scrollbar {
@@ -43,6 +45,12 @@
       font-size: 12px;
       fill: #333333;
     }
+
+    #tl-legend {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+    }
   </style>
 </head>
 
@@ -50,6 +58,7 @@
 
   <div id="tl-wrap">
     <svg id="tl-svg"></svg>
+    <div id="tl-legend"></div>
   </div>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -59,24 +68,24 @@
 
     const DATA = [
       { dateLabel: '2015', date: '2017-01-01', label: 'Reynobond PE sold by Arconic for use in Grenfell Tower', category: 'corporate' },
-      { dateLabel: '2013-2017', date: '2017-01-01', label: 'Pre-fire warnings from Grenfell Action Group', category: 'grenfell' },
+      // { dateLabel: '2013-2017', date: '2017-01-01', label: 'Pre-fire warnings from Grenfell Action Group', category: 'grenfell' },
       { dateLabel: '14 June 2017', date: '2017-06-14', label: 'Grenfell Tower fire', category: 'anniversary' },
       { dateLabel: '14 June 2017', date: '2017-06-14', label: 'Grenfell Inquiry ordered', category: 'grenfell' },
-      { dateLabel: '11 August 2017', date: '2017-08-11', label: 'Arconic shareholders sue Western District of Pennsylvania (Howard v Arconic)', category: 'litigation' },
+      { dateLabel: '11 August 2017', date: '2017-08-11', label: 'Arconic shareholders sue Western District of Pennsylvania (Howard v Arconic)', category: 'shareholders' },
       { dateLabel: 'May 2018', date: '2018-05-01', label: 'Government pledge £400mn in the Social Sector ACM Cladding Remediation Fund', category: 'remediation' },
       { dateLabel: '14 June 2018', date: '2018-06-14', label: 'First anniversary', category: 'anniversary' },
-      { dateLabel: 'May 2019', date: '2019-05-01', label: 'Government announce additional £200mn in Private Sector ACM Cladding Remediation Fund', category: 'remediation', labelSide: 'below' },
-      { dateLabel: 'June 2019', date: '2019-06-01', label: 'Chief Judge Hornak grants motion to dismiss (Howard v Arconic)', category: 'litigation' },
+      { dateLabel: 'May 2019', date: '2019-05-01', label: 'Government announce additional £200mn in Private Sector ACM Cladding Remediation Fund', category: 'remediation' },
+      { dateLabel: 'June 2019', date: '2019-06-21', label: 'Chief Judge Hornak grants motion to dismiss (Howard v Arconic)', category: 'shareholders' },
       { dateLabel: '14 June 2019', date: '2019-06-14', label: 'Second anniversary', category: 'anniversary' },
-      { dateLabel: '19 June 2019', date: '2019-06-19', label: 'Behrens v Arconic case filed in District Court of Pennsylvania (Behrens v Arconic)', category: 'litigation', labelSide: 'below' },
+      { dateLabel: '19 June 2019', date: '2019-06-19', label: 'Behrens v Arconic case filed in District Court of Pennsylvania (Behrens v Arconic)', category: 'litigation' },
       { dateLabel: '30 October 2019', date: '2019-10-30', label: 'Inquiry Phase 1 published', category: 'grenfell' },
-      { dateLabel: '2020', date: '2020-01-01', label: 'Arconic splits into Arconic and Howmet Aerospace', category: 'corporate' },
-      { dateLabel: 'March 2020', date: '2020-03-01', label: 'Claims first filed in Abdel-Kader litigation (Abdel-Kader)', category: 'litigation' },
+      { dateLabel: 'April 2020', date: '2020-04-01', label: 'Arconic splits into Arconic and Howmet Aerospace', category: 'corporate' },
+      { dateLabel: 'March 2020', date: '2020-03-01', label: 'Claims first filed in Abdel-Kader litigation (Abdel-Kader)', category: 'litigation', labelSide: 'below' },
       { dateLabel: '14 June 2020', date: '2020-06-14', label: 'Third anniversary', category: 'anniversary' },
       { dateLabel: '6 August 2020', date: '2020-08-06', label: 'Arconic produces document of insurance policies (Behrens v Arconic)', category: 'litigation' },
-      { dateLabel: '16 September 2020', date: '2020-09-16', label: 'Arconic produces document of insurance policies (Behrens v Arconic)', category: 'litigation', labelSide: 'below' },
+      { dateLabel: '16 September 2020', date: '2020-09-16', label: 'Behrens case dismissed as forum non conveniens', category: 'litigation', labelSide: 'below' },
       { dateLabel: '14 June 2021', date: '2021-06-14', label: 'Fourth anniversary', category: 'anniversary' },
-      { dateLabel: '24 June 2021', date: '2021-06-24', label: 'Howard judgement in favour of plaintiffs (Howard v Arconic)', category: 'litigation' },
+      { dateLabel: '24 June 2021', date: '2021-06-24', label: 'Howard judgement in favour of plaintiffs (Howard v Arconic)', category: 'shareholders' },
       { dateLabel: '14 June 2022', date: '2022-06-14', label: 'Fifth anniversary', category: 'anniversary' },
       { dateLabel: '8 July 2022', date: '2022-07-08', label: 'Behrens appeal judgement (Behrens v Arconic)', category: 'litigation' },
       { dateLabel: 'May 2023', date: '2023-05-01', label: 'Civil settlement agreed (Abdel-Kader)', category: 'litigation' },
@@ -97,6 +106,7 @@
     const C = {
       anniversary: "#0C425B",
       corporate: '#9ca4fc',
+      shareholders: '#5C328A',
       grenfell: '#00C0A3',
       remediation: '#A0ECD0',
       litigation: '#777777',
@@ -108,10 +118,10 @@
 
     // Dimensions
 
-    const HEIGHT = 640;
-    const MARGIN = { top: 16, right: 40, bottom: 16, left: 40 };
+    const HEIGHT = 700;
+    const MARGIN = { top: 24, right: 24, bottom: 24, left: 24 };
     const PX_PER_YEAR = 420;
-    const LAYER_GAP = 110;
+    // const LAYER_GAP = 120;
     const DOT_R = 8;
     const LABEL_OFFSET_X = -4;
     const LABEL_OFFSET_Y = 24;
@@ -119,25 +129,33 @@
     const PATH_OPACITY = 1;
     const CONNECTOR_LENGTH = 8;
     const LABEL_MAX_WIDTH = 200;
-    const LINE_HEIGHT = FS.event * 1.4;
+    const LINE_HEIGHT = FS.event * 1.3;
     const LABEL_FONT = `${FS.event}px Neue Haas Unica W1G`;
-    const AXIS_TICK = 16;
+    const AXIS_TICK = 8;
+    const LEGEND_ITEM_HEIGHT = 20;
+    const LEGEND_DOT_R = 5;
 
     // Layers
 
-    const centerY = HEIGHT / 2;
-
     const LAYERS = [
-      { id: 'corporate', color: C.corporate, axisLine: false },
-      { id: 'grenfell', color: C.grenfell, axisLine: false },
-      { id: 'anniversary', color: C.anniversary, axisLine: true },
-      { id: 'litigation', color: C.litigation, axisLine: false },
-      { id: 'remediation', color: C.remediation, axisLine: false },
+      { id: 'corporate', color: C.corporate, axisLine: false, legendLabel: 'Arconic restructuring' },
+      { id: 'shareholders', color: C.shareholders, axisLine: false, legendLabel: 'Arconic vs shareholders' },
+      { id: 'anniversary', color: C.anniversary, axisLine: true, legendLabel: 'Grenfell anniversaries' },
+      { id: 'grenfell', color: C.grenfell, axisLine: false, legendLabel: 'Grenfell Tower Inquiry' },
+      { id: 'litigation', color: C.litigation, axisLine: false, legendLabel: 'Litigations' },
+      { id: 'remediation', color: C.remediation, axisLine: false, legendLabel: 'Remediation' },
     ];
 
-    // Vertical order of each layer
-    const Y_OFFSETS = [-2, -1, 0, 1, 2];
-    LAYERS.forEach((l, i) => l.y = centerY + Y_OFFSETS[i] * LAYER_GAP);
+    // Old vertical order from centre
+    // const centerY = HEIGHT / 2;
+    // const Y_OFFSETS = [-2, -1, 0, 1, 2, 3];
+    // LAYERS.forEach((l, i) => l.y = centerY + Y_OFFSETS[i] * LAYER_GAP);
+
+    const fullHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
+    const TOP_OFFSET = 64;
+    LAYERS.forEach((l, i) => {
+      l.y = MARGIN.top + TOP_OFFSET + (i / (LAYERS.length - 1)) * (fullHeight - TOP_OFFSET);
+    });
 
 
     // Timeline date range
@@ -219,16 +237,16 @@
             .attr('stroke-width', 1.5);
         });
       }
-      // Keep connector line on other layers?
-      // else {
-      //   g.append('line')
-      //     .attr('x1', x(evts[0]._date))
-      //     .attr('x2', x(evts[evts.length - 1]._date))
-      //     .attr('y1', layer.y).attr('y2', layer.y)
-      //     .attr('stroke', layer.color)
-      //     .attr('stroke-width', 1.5)
-      //     .attr('opacity', PATH_OPACITY);
-      // }
+
+      else {
+        g.append('line')
+          .attr('x1', x(evts[0]._date))
+          .attr('x2', x(evts[evts.length - 1]._date))
+          .attr('y1', layer.y).attr('y2', layer.y)
+          .attr('stroke', layer.color)
+          .attr('stroke-width', 1.5)
+          .attr('opacity', PATH_OPACITY);
+      }
 
       // Dots
       g.selectAll('circle').data(evts).join('circle')
@@ -280,6 +298,28 @@
               .text(line);
           });
         });
+    });
+
+    // Legend
+    const legend = d3.select('#tl-legend');
+
+    LAYERS.forEach(layer => {
+      const item = legend.append('div')
+        .style('display', 'flex')
+        .style('align-items', 'center')
+        .style('margin-bottom', '8px');
+
+      item.append('div')
+        .style('width', `${LEGEND_DOT_R * 2}px`)
+        .style('height', `${LEGEND_DOT_R * 2}px`)
+        .style('border-radius', '50%')
+        .style('background', layer.color)
+        .style('flex-shrink', '0');
+
+      item.append('span')
+        .style('margin-left', '8px')
+        .attr('class', 'tl-date')
+        .text(layer.legendLabel);
     });
 
   </script>
