@@ -91,7 +91,7 @@
       { dateLabel: 'March 2020', date: '2020-03-01', label: 'Abdel-Kader litigation: Claims first filed in the High Court of England and Wales', category: 'litigation', labelSide: 'below' },
       { dateLabel: '14 June 2020', date: '2020-06-14', label: 'Third anniversary of the fire', category: 'anniversary' },
       { dateLabel: '6 August 2020', date: '2020-08-06', label: 'Arconic produces document of insurance policies (Behrens v Arconic)', category: 'litigation' },
-      { dateLabel: '16 September 2020', date: '2020-09-16', label: 'Behrens case dismissed as "forum non conveniens"', category: 'litigation', labelSide: 'below' },
+      { dateLabel: '16 September 2020', date: '2020-09-16', label: 'Behrens v. Arconic case dismissed on the grounds of "forum non conveniens"', category: 'litigation', labelSide: 'below' },
       { dateLabel: '14 June 2021', date: '2021-06-14', label: 'Fourth anniversary of the fire', category: 'anniversary' },
       { dateLabel: '23 June 2021', date: '2021-06-23', label: 'Case allowed to proceed after Second Amended Complaint', category: 'shareholders' },
       { dateLabel: '14 June 2022', date: '2022-06-14', label: 'Fifth anniversary of the fire', category: 'anniversary' },
@@ -149,11 +149,11 @@
 
     const LAYERS = [
       { id: 'corporate', color: C.corporate, axisLine: false, legendLabel: 'Arconic restructuring' },
-      { id: 'shareholders', color: C.shareholders, axisLine: false, legendLabel: 'Arconic vs shareholders' },
-      { id: 'anniversary', color: C.anniversary, axisLine: true, legendLabel: 'Grenfell anniversaries' },
+      { id: 'shareholders', color: C.shareholders, axisLine: false, legendLabel: 'Shareholder action — Howard v. Arconic' },
+      { id: 'anniversary', color: C.anniversary, axisLine: true, showInLegend: false  },
       { id: 'grenfell', color: C.grenfell, axisLine: false, legendLabel: 'Grenfell Tower Inquiry' },
-      { id: 'litigation', color: C.litigation, axisLine: false, legendLabel: 'Litigations' },
-      { id: 'remediation', color: C.remediation, axisLine: false, legendLabel: 'Remediation' },
+      { id: 'litigation', color: C.litigation, axisLine: false, legendLabel: 'Civil actions — Behrens v. Arconic and the Abdel-Kader litigation' },
+      { id: 'remediation', color: C.remediation, axisLine: false, legendLabel: 'Cladding remediation' },
     ];
 
     // Old vertical order from centre
@@ -313,7 +313,7 @@
     // Legend
     const legend = d3.select('#tl-legend');
 
-    LAYERS.forEach(layer => {
+    LAYERS.filter(l => l.showInLegend !== false).forEach(layer => {
       const item = legend.append('div')
         .style('display', 'flex')
         .style('align-items', 'center')
